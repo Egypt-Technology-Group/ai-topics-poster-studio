@@ -185,6 +185,12 @@ function redo(){
 
 // ---------- Utils ----------
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Detect base direction of a text from its first strong character (Arabic/Hebrew → rtl)
+function textDir(t){
+  const m = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]|[A-Za-z]/.exec(String(t||''));
+  if(!m) return 'rtl';
+  return /[A-Za-z]/.test(m[0]) ? 'ltr' : 'rtl';
+}
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 function hexToRgb(hex){
   const m = /#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})/i.exec(hex) || /#?([a-f\d])([a-f\d])([a-f\d])/i.exec(hex);
@@ -290,6 +296,7 @@ function buildCardHTML(c, i){
   const spanCls = span==='half' ? ' card-half' : '';
   const variantCls = (ctype==='tip'||ctype==='warning'||ctype==='info') ? ` type-${ctype}` : '';
   const cls = `card${variantCls}${spanCls}${compact}${collapsed}`;
+  const cardDir = ` dir="${textDir(c.title || c.ar)}"`;
   // Per-card custom style overrides (optional)
   const cardStyle = (() => {
     let parts = [];
@@ -306,9 +313,9 @@ function buildCardHTML(c, i){
   };
   if(ctype === 'tip' || ctype === 'warning' || ctype === 'info'){
     return `
-    <div class="${cls}" data-i="${i}"${cardStyle}>
+    <div class="${cls}" data-i="${i}"${cardDir}${cardStyle}>
       ${tipIcon(ctype)}
-      <h2>${esc(c.title)}</h2>
+      <h2 dir="auto">${esc(c.title)}</h2>
       <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
       ${(c.noteTitle||c.noteText) ? `
       <div class="note ar">
@@ -318,9 +325,9 @@ function buildCardHTML(c, i){
     </div>`;
   }
   return `
-    <div class="${cls}" data-i="${i}"${cardStyle}>
+    <div class="${cls}" data-i="${i}"${cardDir}${cardStyle}>
       <div class="number">${esc(c.number)}</div>
-      <h2>${esc(c.title)}</h2>
+      <h2 dir="auto">${esc(c.title)}</h2>
       <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
       ${c.code!==undefined && c.code!==null && c.code!=='' ? `
       <div class="code code-${state.codeTheme||'dark'}${state.codeLineNumbers?' code-ln':''}">
