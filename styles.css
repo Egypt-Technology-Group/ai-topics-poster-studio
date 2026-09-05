@@ -323,6 +323,18 @@ body{display:flex;flex-direction:column;}
   .iconbtn .ibi{width:15px;height:15px}
 }
 
+/* agent paste modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(4,7,13,.75);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal-overlay[hidden]{display:none}
+.modal{background:var(--ui-panel);border:1px solid var(--ui-line);border-radius:12px;box-shadow:var(--ui-shadow);width:min(640px,100%);padding:18px;display:flex;flex-direction:column;gap:12px}
+.modal-h{display:flex;align-items:center;justify-content:space-between;font-weight:900;font-size:15px}
+.modal-hint{font-size:11.5px;color:var(--ui-muted);margin:0}
+.modal textarea{width:100%;min-height:220px;background:#0c1322;border:1px solid var(--ui-line);color:var(--ui-txt);padding:10px 12px;border-radius:8px;font-family:'Courier New',monospace;font-size:12px;line-height:1.6;resize:vertical;outline:none;text-align:left}
+.modal textarea:focus{border-color:var(--ui-accent);box-shadow:0 0 0 3px rgba(91,140,255,.15)}
+.modal-err{background:rgba(255,91,91,.12);border:1px solid var(--ui-red);color:var(--ui-red);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700}
+.modal-err[hidden]{display:none}
+.modal-f{display:flex;align-items:center;gap:8px}
+
 /* ---- REDUCED MOTION ---- */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}

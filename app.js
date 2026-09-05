@@ -592,22 +592,130 @@ function saveJSON(){
   a.click(); URL.revokeObjectURL(a.href);
   toast('تم حفظ المشروع');
 }
+function applyLoadedState(loaded){
+  pushHistory();
+  const d=defaultState();
+  state=Object.assign(d,loaded);
+  // deep-merge logo positions so old projects keep defaults for missing fields
+  state.userLogoPos=Object.assign({pos:"auto-tl",size:210,dx:0,dy:0}, loaded.userLogoPos||{});
+  state.techLogoPos=Object.assign({pos:"tr",size:230,dx:45,dy:50}, loaded.techLogoPos||{});
+  state.logoHighlight=Object.assign({enabled:true,color:'#61dafb',blur:25,opacity:0.35,x:0,y:0}, loaded.logoHighlight||{});
+  state.bgHighlight=Object.assign({enabled:true,color:'#61dafb',opacity:0.38,x:85,y:0,size:30}, loaded.bgHighlight||{});
+  // backfill card.type for old projects
+  (state.cards||[]).forEach(c=>{ if(!c.type) c.type='code'; });
+  future=[]; renderAll();
+}
 function loadJSON(file){
   const r=new FileReader();
   r.onload=()=>{ try{
-    pushHistory();
-    const d=defaultState(), loaded=JSON.parse(r.result);
-    state=Object.assign(d,loaded);
-    // deep-merge logo positions so old projects keep defaults for missing fields
-    state.userLogoPos=Object.assign({pos:"auto-tl",size:210,dx:0,dy:0}, loaded.userLogoPos||{});
-    state.techLogoPos=Object.assign({pos:"tr",size:230,dx:45,dy:50}, loaded.techLogoPos||{});
-    state.logoHighlight=Object.assign({enabled:true,color:'#61dafb',blur:25,opacity:0.35,x:0,y:0}, loaded.logoHighlight||{});
-    state.bgHighlight=Object.assign({enabled:true,color:'#61dafb',opacity:0.38,x:85,y:0,size:30}, loaded.bgHighlight||{});
-    // backfill card.type for old projects
-    (state.cards||[]).forEach(c=>{ if(!c.type) c.type='code'; });
-    future=[]; renderAll(); toast('تم تحميل المشروع');
+    applyLoadedState(JSON.parse(r.result));
+    toast('تم تحميل المشروع');
   }catch(e){ toast('ملف غير صالح'); } };
   r.readAsText(file);
+}
+
+// ---------- Agent paste (AI-generated designs) ----------
+const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics Poster Editor
+
+أنت تصمّم بوسترًا تقنيًا. أخرج **JSON واحدًا فقط** (بدون أي نص إضافي) يطابق المخطط التالي. كل الحقول اختيارية — الحقول الناقصة تأخذ قيمًا افتراضية — لكن يُنصح بملء الحقول الأساسية.
+
+## المخطط
+
+\`\`\`json
+{
+  "lang": "react",
+  "theme": "theme-react",
+  "badge": "REACT",
+  "titleMain": "HOOKS",
+  "titleAccent": "DEEP DIVE",
+  "subtitle": "STATE & EFFECTS",
+  "intro": "مقدمة عربية قصيرة من سطر أو سطرين تمهّد للموضوع.",
+  "footer": "@egyitech",
+  "colors": { "--red": "#61dafb", "--red2": "#2a9ec4" },
+  "cards": [
+    {
+      "number": "01",
+      "title": "Card Title (English)",
+      "ar": "شرح عربي موجز للنقطة.",
+      "type": "code",
+      "codeLang": "jsx",
+      "code": "const x = 1;",
+      "rawCode": false,
+      "noteTitle": "متى تستخدمه؟",
+      "noteText": "ملاحظة عربية إرشادية قصيرة."
+    }
+  ]
+}
+\`\`\`
+
+## الحقول
+
+| الحقل | الوصف |
+|-------|--------|
+| \`lang\` | التقنية: \`laravel\` \`vue\` \`react\` \`js\` \`css\` \`php\` \`tailwind\` \`bootstrap\` \`flutter\` — تضبط الألوان والشعار والثيم تلقائيًا |
+| \`theme\` | الثيم البصري: \`theme-laravel\` \`theme-react\` \`theme-vue\` \`theme-js\` \`theme-css\` \`theme-php\` \`theme-tailwind\` \`theme-bootstrap\` \`theme-flutter\` \`theme-dots\` \`theme-curves\` \`theme-gradient\` \`theme-glow\` \`theme-particles\` |
+| \`badge\` | شارة صغيرة أعلى البوستر (بالإنجليزية، أحرف كبيرة) |
+| \`titleMain\` / \`titleAccent\` | العنوان الرئيسي على سطرين (بالإنجليزية، قصير وقوي) |
+| \`subtitle\` | سطر فرعي إنجليزي قصير |
+| \`intro\` | مقدمة عربية (RTL) — استخدم \\n للأسطر |
+| \`footer\` | توقيع أسفل البوستر |
+| \`colors\` | ألوان مخصصة اختيارية: \`--bg\` \`--red\` \`--red2\` \`--cyan\` \`--white\` \`--muted\` \`--panel\` \`--panel2\` |
+
+## البطاقات (cards)
+
+- \`number\`: رقم البطاقة "01"، "02"...
+- \`title\`: عنوان البطاقة بالإنجليزية.
+- \`ar\`: شرح عربي (سطر إلى ثلاثة).
+- \`type\`: \`"code"\` لبطاقة كود، أو \`"tip"\` لبطاقة نصيحة نصية بدون كود.
+- \`codeLang\`: لغة التلوين — \`laravel\` \`vue\` \`react\` \`js\` \`jsx\` \`css\` \`html\` \`php\` \`tailwind\` \`bootstrap\` \`flutter\` \`python\` \`typescript\` \`bash\` \`sql\` \`json\` \`markdown\`.
+- \`code\`: الكود (استخدم \\n للأسطر). التلوين تلقائي.
+- \`rawCode\`: \`true\` فقط إذا أردت كتابة HTML ملوّن يدويًا بـ \`<span>\` — اتركها \`false\` عادةً.
+- \`noteTitle\` / \`noteText\`: ملاحظة عربية اختيارية أسفل البطاقة.
+
+## قواعد التصميم
+
+1. من 2 إلى 4 بطاقات كحد أقصى — البوستر يطول مع كل بطاقة.
+2. العناوين الإنجليزية قصيرة (كلمتان كحد أقصى لكل سطر).
+3. المقدمة والشروح والملاحظات بالعربية؛ العناوين والكود والشارة بالإنجليزية.
+4. الكود قصير (حتى ~10 أسطر) وواقعي وصحيح نحويًا.
+5. نوّع بين بطاقات \`code\` و\`tip\` عند الحاجة — استخدم \`tip\` للنقاط النظرية.
+6. اختر \`lang\` المطابق لموضوع البوستر؛ إن لم يكن له قالب استخدم \`colors\` مخصصة مع ثيم مناسب.
+7. أخرج JSON خامًا صالحًا فقط — بلا شرح، بلا markdown إن أمكن (يُقبل \`\`\`json أيضًا).
+`;
+
+function openAgentModal(){
+  const m=document.getElementById('agentModal');
+  m.hidden=false;
+  document.getElementById('agentError').hidden=true;
+  document.getElementById('agentInput').focus();
+}
+function closeAgentModal(){ document.getElementById('agentModal').hidden=true; }
+function applyAgentJSON(){
+  const errEl=document.getElementById('agentError');
+  let raw=document.getElementById('agentInput').value.trim();
+  if(!raw){ errEl.textContent='الصق كود JSON أولًا'; errEl.hidden=false; return; }
+  const fence=/^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(raw);
+  if(fence) raw=fence[1];
+  let loaded;
+  try{ loaded=JSON.parse(raw); }
+  catch(e){ errEl.textContent='JSON غير صالح: '+e.message; errEl.hidden=false; return; }
+  if(!loaded||typeof loaded!=='object'||Array.isArray(loaded)){ errEl.textContent='يجب أن يكون المحتوى كائن JSON'; errEl.hidden=false; return; }
+  applyLoadedState(loaded);
+  closeAgentModal();
+  toast('تم تطبيق تصميم الوكيل');
+}
+function copyAgentSpec(){
+  const done=()=>toast('تم نسخ التعليمات — أعطها للوكيل');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(AGENT_SPEC).then(done).catch(()=>fallbackCopySpec(done));
+  } else fallbackCopySpec(done);
+}
+function fallbackCopySpec(done){
+  const t=document.createElement('textarea');
+  t.value=AGENT_SPEC; t.style.position='fixed'; t.style.opacity='0';
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ toast('تعذّر النسخ'); }
+  document.body.removeChild(t);
 }
 function newProject(){ if(confirm('بدء مشروع جديد؟ سيتم فقدان التعديلات غير المحفوظة.')){ pushHistory(); state=defaultState(); history=[]; future=[]; renderAll(); updateHistBtns(); toast('مشروع جديد'); } }
 
@@ -792,6 +900,11 @@ function init(){
   document.getElementById('btnLoad').onclick=()=>document.getElementById('fileLoad').click();
   document.getElementById('fileLoad').onchange=e=>{ if(e.target.files[0]) loadJSON(e.target.files[0]); e.target.value=''; };
   document.getElementById('btnExport').onclick=exportPNG;
+  document.getElementById('btnAgent').onclick=openAgentModal;
+  document.getElementById('btnAgentClose').onclick=closeAgentModal;
+  document.getElementById('btnAgentApply').onclick=applyAgentJSON;
+  document.getElementById('btnAgentCopySpec').onclick=copyAgentSpec;
+  document.getElementById('agentModal').addEventListener('click',e=>{ if(e.target.id==='agentModal') closeAgentModal(); });
   document.getElementById('dimInfo').textContent=POSTER_WIDTH+'px';
 
   const zoom=document.getElementById('zoom'), zv=document.getElementById('zoomVal'), stage=document.getElementById('stage');
@@ -802,6 +915,7 @@ function init(){
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){ e.preventDefault(); saveJSON(); }
+    if(e.key==='Escape'&&!document.getElementById('agentModal').hidden) closeAgentModal();
   });
 }
 init();
