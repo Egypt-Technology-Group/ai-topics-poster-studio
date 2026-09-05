@@ -157,6 +157,18 @@ function pushHistory(){
 function updateHistBtns(){
   document.getElementById('btnUndo').disabled = history.length<1;
   document.getElementById('btnRedo').disabled = future.length<1;
+  updateDirtyStatus();
+}
+function updateDirtyStatus(){
+  const el = document.getElementById('brandStatus');
+  if(!el) return;
+  const dirty = history.length > 0 || future.length > 0;
+  el.classList.toggle('dirty', dirty);
+  el.title = dirty ? 'توجد تغييرات غير محفوظة' : 'لا توجد تغييرات غير محفوظة';
+}
+function clearDirtyStatus(){
+  const el = document.getElementById('brandStatus');
+  if(el){ el.classList.remove('dirty'); el.title='لا توجد تغييرات غير محفوظة'; }
 }
 function undo(){
   if(!history.length) return;
@@ -546,21 +558,211 @@ function updateDimInfo(ps, totalPages){
 }
 
 // ---------- Sidebar render ----------
-function sidebarSection(id, title, icon, bodyHTML, open){
+let sidebarSearchTerm = '';
+// Persistent set of open section IDs — survives re-renders so sections
+// don't snap back to their hardcoded default state on every interaction.
+const openSections = new Set();
+function sidebarSection(id, title, icon, bodyHTML, count){
+  const open = openSections.has(id);
+  const cnt = count!=null ? `<span class="sec-cnt">${count}</span>` : '';
   return `<div class="sec ${open?'open':''}" id="sec-${id}">
     <button type="button" class="sec-h" onclick="toggleSec('${id}')" aria-expanded="${open?'true':'false'}" aria-controls="sec-${id}-body">
-      ${icon}<span>${title}</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      ${icon}<span>${title}</span>${cnt}<svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
-    <div class="sec-b" id="sec-${id}-body">${bodyHTML}</div>
+    <div class="sec-b" id="sec-${id}-body"><div class="sec-b-w">${bodyHTML}</div></div>
   </div>`;
 }
 function toggleSec(id){
   const sec = document.getElementById('sec-'+id);
-  sec.classList.toggle('open');
+  if(!sec) return;
+  const body = sec.querySelector('.sec-b');
+  if(!body) return;
+  const willOpen = !sec.classList.contains('open');
+  if(willOpen){
+    // open with measured height for a clean animation
+    body.style.maxHeight = '0px';
+    body.offsetHeight; // force reflow
+    body.style.maxHeight = body.scrollHeight + 'px';
+    openSections.add(id);
+  } else {
+    // close from measured height
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.offsetHeight; // force reflow
+    body.style.maxHeight = '0px';
+    openSections.delete(id);
+  }
+  sec.classList.toggle('open', willOpen);
   const btn = sec.querySelector('.sec-h');
-  if(btn) btn.setAttribute('aria-expanded', sec.classList.contains('open'));
+  if(btn) btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  // after the transition, remove the inline max-height so re-renders pick up the CSS
+  const onEnd = ()=>{
+    if(sec.classList.contains('open')){
+      // set to a safe large value via CSS; remove inline override
+      body.style.maxHeight = '';
+    }
+  };
+  body.removeEventListener('transitionend', body._onEnd);
+  body._onEnd = onEnd;
+  body.addEventListener('transitionend', onEnd, {once:true});
+  updateNavActive();
 }
 window.toggleSec = toggleSec;
+function onSidebarSearch(val){
+  sidebarSearchTerm = val;
+  applySidebarFilter();
+  // show/hide quick-nav depending on whether search is active
+  const nav = document.getElementById('sbNav');
+  if(nav) nav.style.display = val.trim() ? 'none' : '';
+}
+window.onSidebarSearch = onSidebarSearch;
+
+// Ordered list of sidebar sections for quick-nav + active tracking
+const SIDEBAR_SECTIONS = [
+  {id:'layout', label:'الأبعاد'},
+  {id:'lang',   label:'القالب'},
+  {id:'color',  label:'الألوان'},
+  {id:'theme',  label:'الثيم'},
+  {id:'bghl',   label:'الإضاءة'},
+  {id:'title',  label:'العنوان'},
+  {id:'card',   label:'البطاقات'},
+  {id:'code',   label:'الكود'},
+  {id:'logo',   label:'الشعارات'},
+  {id:'foot',   label:'الفوتر'},
+];
+
+function expandAllSections(){
+  document.querySelectorAll('#sidebar .sec').forEach(sec=>{
+    const id = sec.id.replace('sec-','');
+    if(id) openSections.add(id);
+    const body = sec.querySelector('.sec-b');
+    sec.classList.add('open');
+    if(body){
+      body.style.maxHeight = '0px';
+      body.offsetHeight;
+      body.style.maxHeight = body.scrollHeight + 'px';
+    }
+    const btn = sec.querySelector('.sec-h');
+    if(btn) btn.setAttribute('aria-expanded','true');
+  });
+}
+function collapseAllSections(){
+  document.querySelectorAll('#sidebar .sec').forEach(sec=>{
+    const body = sec.querySelector('.sec-b');
+    if(body){
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.offsetHeight;
+      body.style.maxHeight = '0px';
+    }
+    sec.classList.remove('open');
+    const btn = sec.querySelector('.sec-h');
+    if(btn) btn.setAttribute('aria-expanded','false');
+  });
+  openSections.clear();
+}
+window.expandAllSections = expandAllSections;
+window.collapseAllSections = collapseAllSections;
+
+function jumpToSection(id){
+  const sec = document.getElementById('sec-'+id);
+  if(!sec) return;
+  const body = sec.querySelector('.sec-b');
+  sec.classList.add('open');
+  openSections.add(id);
+  if(body){
+    body.style.maxHeight = '0px';
+    body.offsetHeight;
+    body.style.maxHeight = body.scrollHeight + 'px';
+  }
+  const btn = sec.querySelector('.sec-h');
+  if(btn) btn.setAttribute('aria-expanded','true');
+  sec.scrollIntoView({behavior:'smooth', block:'start'});
+  // brief flash highlight
+  sec.classList.remove('flash');
+  void sec.offsetWidth; // reflow to restart animation
+  sec.classList.add('flash');
+  setTimeout(()=>sec.classList.remove('flash'), 900);
+  updateNavActive(id);
+}
+window.jumpToSection = jumpToSection;
+
+let _navObserver = null;
+function updateNavActive(forceId){
+  const chips = document.querySelectorAll('#sbNav .sb-nav-chip');
+  if(!chips.length) return;
+  let activeId = forceId;
+  if(!activeId){
+    // pick the section whose header is closest to the top of the sidebar viewport
+    const sb = document.getElementById('sidebar');
+    if(!sb) return;
+    let best = null, bestDist = Infinity;
+    SIDEBAR_SECTIONS.forEach(s=>{
+      const el = document.getElementById('sec-'+s.id);
+      if(!el) return;
+      const r = el.getBoundingClientRect();
+      const sbTop = sb.getBoundingClientRect().top;
+      const dist = Math.abs(r.top - sbTop - 8);
+      // prefer sections that have scrolled past the top (header near/above top)
+      const adj = r.top - sbTop - 8 <= 0 ? dist * 0.5 : dist;
+      if(adj < bestDist){ bestDist = adj; best = s.id; }
+    });
+    activeId = best;
+  }
+  chips.forEach(c=>{
+    const id = c.getAttribute('data-sec');
+    c.classList.toggle('active', id === activeId);
+    c.setAttribute('aria-current', id === activeId ? 'true' : 'false');
+  });
+}
+window.updateNavActive = updateNavActive;
+
+function setupSidebarScrollTracking(){
+  const sb = document.getElementById('sidebar');
+  if(!sb) return;
+  if(sb._navWired) return;
+  sb._navWired = true;
+  let raf = 0;
+  sb.addEventListener('scroll', ()=>{
+    if(raf) return;
+    raf = requestAnimationFrame(()=>{ raf = 0; updateNavActive(); });
+  }, {passive:true});
+  // back-to-top button
+  const bt = document.createElement('button');
+  bt.type = 'button';
+  bt.className = 'sb-back-top';
+  bt.setAttribute('aria-label','العودة لأعلى اللوحة');
+  bt.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>';
+  bt.addEventListener('click', ()=> sb.scrollTo({top:0, behavior:'smooth'}));
+  sb.appendChild(bt);
+  const updateBt = ()=>{
+    bt.classList.toggle('show', sb.scrollTop > 320);
+  };
+  sb.addEventListener('scroll', updateBt, {passive:true});
+  updateBt();
+}
+window.setupSidebarScrollTracking = setupSidebarScrollTracking;
+function applySidebarFilter(){
+  const term = sidebarSearchTerm.trim().toLowerCase();
+  const sb = document.getElementById('sidebar');
+  if(!sb) return;
+  sb.querySelectorAll('.sec').forEach(sec=>{
+    const id = sec.id.replace('sec-','');
+    if(!term){ sec.style.display=''; return; }
+    const title = sec.querySelector('.sec-h > span');
+    if(title && title.textContent.toLowerCase().includes(term)){
+      sec.style.display='';
+      const body = sec.querySelector('.sec-b');
+      if(body && !sec.classList.contains('open')){
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+      sec.classList.add('open');
+      openSections.add(id);
+      const btn = sec.querySelector('.sec-h');
+      if(btn) btn.setAttribute('aria-expanded','true');
+    } else {
+      sec.style.display='none';
+    }
+  });
+}
 
 function renderSidebar(){
   const s = state;
@@ -573,6 +775,7 @@ function renderSidebar(){
     logo:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',
     foot:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l4-4 4 4 8-8"/><path d="M12 9h8v8"/></svg>',
     bghl:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>',
+    code:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
   };
 
   // Language / preset
@@ -860,17 +1063,44 @@ function renderSidebar(){
     <div class="fld"><div class="hint">كل عنصر قابل للتعديل من 50% إلى 160%. خط أصغر = مساحة أكبر للبطاقات = صفحات أقل.</div></div>`;
 
   const sb = document.getElementById('sidebar');
-  sb.innerHTML =
-    sidebarSection('layout','الأبعاد والخط',icons.theme,layoutHTML,true) +
-    sidebarSection('lang','اللغة / القالب',icons.lang,presetHTML,true) +
-    sidebarSection('color','الألوان',icons.color,colorHTML,false) +
-    sidebarSection('theme','ثيم الخلفية',icons.theme,themeHTML,false) +
-    sidebarSection('bghl','إضاءة الخلفية',icons.bghl,bgHighlightHTML,false) +
-    sidebarSection('title','العنوان والمقدمة',icons.title,titleHTML,true) +
-    sidebarSection('card','البطاقات',icons.card,cardsHTML,true) +
-    sidebarSection('code','الكود',icons.card,codeHTML,false) +
-    sidebarSection('logo','الشعارات',icons.logo,logoHTML,false) +
-    sidebarSection('foot','الفوتر',icons.foot,footHTML,false);
+  const wasSearchFocused = document.activeElement && document.activeElement.id === 'sidebarSearch';
+  const searchHTML = `<div class="sb-search"><svg class="sb-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="search" id="sidebarSearch" placeholder="بحث في الأدوات..." value="${esc(sidebarSearchTerm)}" oninput="onSidebarSearch(this.value)" aria-label="بحث في أدوات اللوحة"></div>`;
+  const navChips = SIDEBAR_SECTIONS.map(s=>{
+    const cardCount = s.id==='card' && state.cards.length ? `<span class="chip-cnt">${state.cards.length}</span>` : '';
+    return `<button type="button" class="sb-nav-chip" data-sec="${s.id}" onclick="jumpToSection('${s.id}')" aria-current="false"><span>${s.label}</span>${cardCount}</button>`;
+  }).join('');
+  const toolbarHTML = `<div class="sb-actions"><div class="sb-actions-row"><span class="sb-actions-label">أدوات سريعة</span><div class="sb-actions-btns"><button type="button" class="sb-mini" onclick="expandAllSections()" title="فتح كل الأقسام"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/><polyline points="6 4 12 10 18 4" opacity=".5"/></svg><span>فتح الكل</span></button><button type="button" class="sb-mini" onclick="collapseAllSections()" title="طي كل الأقسام"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/><polyline points="18 20 12 14 6 20" opacity=".5"/></svg><span>طي الكل</span></button></div></div><div class="sb-nav" id="sbNav" role="navigation" aria-label="انتقال سريع بين الأقسال">${navChips}</div></div>`;
+  sb.innerHTML = searchHTML + toolbarHTML +
+    sidebarSection('layout','الأبعاد والخط',icons.theme,layoutHTML) +
+    sidebarSection('lang','اللغة / القالب',icons.lang,presetHTML) +
+    sidebarSection('color','الألوان',icons.color,colorHTML) +
+    sidebarSection('theme','ثيم الخلفية',icons.theme,themeHTML) +
+    sidebarSection('bghl','إضاءة الخلفية',icons.bghl,bgHighlightHTML) +
+    sidebarSection('title','العنوان والمقدمة',icons.title,titleHTML) +
+    sidebarSection('card','البطاقات',icons.card,cardsHTML,s.cards.length) +
+    sidebarSection('code','الكود',icons.code,codeHTML) +
+    sidebarSection('logo','الشعارات',icons.logo,logoHTML) +
+    sidebarSection('foot','الفوتر',icons.foot,footHTML);
+
+  // restore search focus after re-render
+  if(wasSearchFocused){
+    const si = document.getElementById('sidebarSearch');
+    if(si){ si.focus(); const len = si.value.length; si.setSelectionRange(len,len); }
+  }
+  // re-apply filter after re-render
+  applySidebarFilter();
+
+  // ensure open sections fully display their content after re-render
+  openSections.forEach(id=>{
+    const sec = document.getElementById('sec-'+id);
+    if(!sec) return;
+    const body = sec.querySelector('.sec-b');
+    if(body) body.style.maxHeight = body.scrollHeight + 'px';
+  });
+
+  // wire scroll tracking + back-to-top (idempotent)
+  setupSidebarScrollTracking();
+  updateNavActive();
 
   // wire dropzones
   ['dropUser','dropTech'].forEach(id=>{
@@ -1056,6 +1286,7 @@ function saveJSON(){
   a.download=`poster-${(state.badge||'ai-topics').toLowerCase().replace(/\s+/g,'-')}.json`;
   a.click(); URL.revokeObjectURL(a.href);
   toast('تم حفظ المشروع');
+  clearDirtyStatus();
 }
 function applyLoadedState(loaded){
   pushHistory();
@@ -1101,6 +1332,7 @@ function loadJSON(file){
   r.onload=()=>{ try{
     applyLoadedState(JSON.parse(r.result));
     toast('تم تحميل المشروع');
+    clearDirtyStatus();
   }catch(e){ toast('ملف غير صالح'); } };
   r.readAsText(file);
 }
@@ -1225,6 +1457,7 @@ function applyAgentJSON(){
   applyLoadedState(loaded);
   closeAgentModal();
   toast('تم تطبيق تصميم الوكيل');
+  clearDirtyStatus();
 }
 function copyAgentSpec(){
   const done=()=>toast('تم نسخ التعليمات — أعطها للوكيل');
@@ -1239,7 +1472,7 @@ function fallbackCopySpec(done){
   try{ document.execCommand('copy'); done(); }catch(e){ toast('تعذّر النسخ'); }
   document.body.removeChild(t);
 }
-function newProject(){ if(confirm('بدء مشروع جديد؟ سيتم فقدان التعديلات غير المحفوظة.')){ pushHistory(); state=defaultState(); history=[]; future=[]; renderAll(); updateHistBtns(); toast('مشروع جديد'); } }
+function newProject(){ if(confirm('بدء مشروع جديد؟ سيتم فقدان التعديلات غير المحفوظة.')){ pushHistory(); state=defaultState(); history=[]; future=[]; renderAll(); updateHistBtns(); clearDirtyStatus(); toast('مشروع جديد'); } }
 
 // ---------- Export PNG ----------
 function waitForImages(root){
@@ -1441,6 +1674,8 @@ function init(){
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); if(e.shiftKey) redo(); else undo(); }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){ e.preventDefault(); saveJSON(); }
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='e'){ e.preventDefault(); exportPNG(); }
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); document.getElementById('sidebarSearch').focus(); }
     if(e.key==='Escape'&&!document.getElementById('agentModal').hidden) closeAgentModal();
   });
 }
