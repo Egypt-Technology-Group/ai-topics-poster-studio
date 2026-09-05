@@ -572,18 +572,22 @@ async function inlineImagesForExport(root){
   }));
 }
 
-function serializePosterForExport(poster,width,height,styles){
-  const safeStyles=styles.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function serializePosterForExport(poster,width,height,outputWidth,outputHeight,styles){
+  const exportReset=`
+    .poster{width:${POSTER_WIDTH}px!important;min-height:${POSTER_MIN_HEIGHT}px!important;transform:none!important}
+    .poster img{max-width:none!important}
+    .poster *{animation:none!important;transition:none!important}
+  `;
+  const safeStyles=(styles+exportReset).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const markup=new XMLSerializer().serializeToString(poster);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><foreignObject x="0" y="0" width="${width}" height="${height}"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;width:${width}px;height:${height}px;overflow:hidden"><style>${safeStyles}</style>${markup}</div></foreignObject></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${width} ${height}"><foreignObject x="0" y="0" width="${width}" height="${height}"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0;width:${width}px;height:${height}px;overflow:hidden"><style>${safeStyles}</style>${markup}</div></foreignObject></svg>`;
 }
 
 async function rasterizePoster(poster,width,height,scale){
   const styles=await getExportStyles();
   const outputWidth=Math.max(1,Math.round(width*scale));
   const outputHeight=Math.max(1,Math.round(height*scale));
-  const svg=serializePosterForExport(poster,width,height,styles)
-    .replace(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"`,`<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}"`);
+  const svg=serializePosterForExport(poster,width,height,outputWidth,outputHeight,styles);
   const url=await blobToDataURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
   const image=await new Promise((resolve,reject)=>{
     const img=new Image();

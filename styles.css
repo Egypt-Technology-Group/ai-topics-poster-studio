@@ -115,7 +115,7 @@ input,textarea,select{font-family:inherit}
 
 /* ============ POSTER TEMPLATE (matches original) ============ */
 .poster-stage{transform-origin:top center}
-.poster-export-stage{position:fixed;left:0;top:0;width:900px;z-index:-2147483647;pointer-events:none;transform:none!important}
+.poster-export-stage{position:fixed;left:0;top:0;z-index:-2147483647;pointer-events:none;transform:none!important}
 .poster-export-stage .poster{transform:none!important}
 .poster{position:relative;overflow:hidden;min-height:var(--poster-min-height,1500px);padding:58px 55px 110px;background:radial-gradient(circle at 85% 0%, rgba(97,218,251,.38), transparent 30%),linear-gradient(135deg,#070b14,#03050b);border-radius:18px;box-shadow:0 25px 70px rgba(0,0,0,.55);width:var(--poster-width,900px);color:var(--white,#f4f5f7);font-family:Inter,Arial,sans-serif}
 .poster:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:radial-gradient(var(--red,#61dafb) 1.5px,transparent 1.5px);background-size:20px 20px;background-position:calc(100% - 50px) 80px;-webkit-mask-image:linear-gradient(to bottom,transparent 0,black 15%,transparent 32%,transparent 70%,black 90%);mask-image:linear-gradient(to bottom,transparent 0,black 15%,transparent 32%,transparent 70%,black 90%)}
