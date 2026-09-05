@@ -23,7 +23,13 @@ const DEFAULT_USER_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAAT
 
 const POSTER_WIDTH = 900;
 const POSTER_MIN_HEIGHT = 1500;
-const EXPORT_SCALE = 3;
+const EXPORT_SCALES = [
+  { v:1, label:'1x — سريع/خفيف' },
+  { v:2, label:'2x — متوازن' },
+  { v:3, label:'3x — طباعة (افتراضي)' },
+  { v:4, label:'4x — أعلى دقة' },
+];
+let exportScale = 3;
 
 // Fixed page sizes (width is always POSTER_WIDTH; height varies by aspect ratio)
 const PAGE_SIZES = {
@@ -81,6 +87,12 @@ const THEMES = [
   {id:"theme-gradient", nm:"تدرج"},
   {id:"theme-glow",     nm:"توهج"},
   {id:"theme-particles",nm:"جسيمات"},
+  {id:"theme-hexagon",  nm:"سداسي"},
+  {id:"theme-mesh",     nm:"شبكي متدرج"},
+  {id:"theme-aurora",   nm:"شفق قطبي"},
+  {id:"theme-waves",    nm:"موجات متتابعة"},
+  {id:"theme-minimal",  nm:"بسيط"},
+  {id:"theme-grid",     nm:"شبكة هندسية"},
 ];
 
 const COLOR_VARS = [
@@ -114,6 +126,13 @@ function defaultState(){
     logoHighlight:{ enabled:true, color:"#61dafb", blur:25, opacity:0.35, x:0, y:0 },
     bgHighlight:{ enabled:true, color:"#61dafb", opacity:0.38, x:85, y:0, size:30 },
     footer:"@egyitech",
+    titleAlign:"center",
+    badgeStyle:"rect",
+    titleWeight:1000,
+    titleSpacing:-5,
+    codeTheme:"dark",
+    codeLineNumbers:false,
+    footerIcons:true,
     cards:[
       { number:"01", title:"Functional Updates", ar:"استخدم التحديث الدالي لمنع التضارب عند عدة تحديثات متتالية للحالة.",
         type:"code", codeLang:"JSX", code:"const [count, setCount] = useState(0);\n\n// Always use the functional form\nsetCount(c => c + 1);", rawCode:false,
@@ -195,6 +214,12 @@ function highlightCode(code, lang){
   }
   return out;
 }
+// Wrap each source line in a .ln-line span for CSS line-number counters
+function highlightCodeLines(code, lang){
+  const src = String(code==null?'':code);
+  if(/<span\s/i.test(src)) return src; // raw HTML mode — skip line wrapping
+  return src.split('\n').map(line=>`<span class="ln-line">${highlightCode(line, lang)}</span>`).join('\n');
+}
 
 // ---------- Render poster ----------
 const FOOTER_SVG = `
@@ -236,11 +261,11 @@ function posterVars(s){
   return { cssVars, bgVars, userWrapStyle, userWrapClass, techStyle, fontScaleVars, ul, tl };
 }
 
-// Resolve a card's effective span: 'auto' → 'half' for tip/no-code cards, 'full' otherwise
+// Resolve a card's effective span: 'auto' → 'half' for tip/warning/info/no-code cards, 'full' otherwise
 function resolveSpan(c){
   if(c.span==='full' || c.span==='half') return c.span;
   const ctype = c.type || 'code';
-  if(ctype === 'tip') return 'half';
+  if(ctype === 'tip' || ctype === 'warning' || ctype === 'info') return 'half';
   if(c.code===undefined || c.code===null || c.code==='') return 'half';
   return 'full';
 }
@@ -251,11 +276,26 @@ function buildCardHTML(c, i){
   const compact = c.compact ? ' card-compact' : '';
   const collapsed = c.collapsed ? ' card-collapsed' : '';
   const spanCls = span==='half' ? ' card-half' : '';
-  const cls = `card${ctype==='tip'?' type-tip':''}${spanCls}${compact}${collapsed}`;
-  if(ctype === 'tip'){
+  const variantCls = (ctype==='tip'||ctype==='warning'||ctype==='info') ? ` type-${ctype}` : '';
+  const cls = `card${variantCls}${spanCls}${compact}${collapsed}`;
+  // Per-card custom style overrides (optional)
+  const cardStyle = (() => {
+    let parts = [];
+    if(c.bg){ const op = c.bgOpacity!=='' && c.bgOpacity!=null ? (+c.bgOpacity/100) : 1; parts.push(`background:${hexToRgba(c.bg,op)}!important`); }
+    if(c.borderColor){ parts.push(`border-color:${c.borderColor}`); }
+    if(c.borderWidth!=='' && c.borderWidth!=null){ parts.push(`border-width:${c.borderWidth}px`); }
+    if(c.radius!=='' && c.radius!=null){ parts.push(`border-radius:${c.radius}px`); }
+    return parts.length ? ` style="${parts.join(';')}"` : '';
+  })();
+  const tipIcon = (variant) => {
+    if(variant==='warning') return `<div class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>`;
+    if(variant==='info') return `<div class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>`;
+    return `<div class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></div>`;
+  };
+  if(ctype === 'tip' || ctype === 'warning' || ctype === 'info'){
     return `
-    <div class="${cls}" data-i="${i}">
-      <div class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></div>
+    <div class="${cls}" data-i="${i}"${cardStyle}>
+      ${tipIcon(ctype)}
       <h2>${esc(c.title)}</h2>
       <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
       ${(c.noteTitle||c.noteText) ? `
@@ -266,17 +306,17 @@ function buildCardHTML(c, i){
     </div>`;
   }
   return `
-    <div class="${cls}" data-i="${i}">
+    <div class="${cls}" data-i="${i}"${cardStyle}>
       <div class="number">${esc(c.number)}</div>
       <h2>${esc(c.title)}</h2>
       <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
       ${c.code!==undefined && c.code!==null && c.code!=='' ? `
-      <div class="code">
+      <div class="code code-${state.codeTheme||'dark'}${state.codeLineNumbers?' code-ln':''}">
         <div class="code-head">
           <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
           <span>${esc(c.codeLang||'CODE')}</span>
         </div>
-        <pre>${c.rawCode ? c.code : highlightCode(c.code, (c.codeLang||'').toLowerCase())}</pre>
+        <pre>${c.rawCode ? c.code : (state.codeLineNumbers ? highlightCodeLines(c.code, (c.codeLang||'').toLowerCase()) : highlightCode(c.code, (c.codeLang||'').toLowerCase()))}</pre>
         ${c.collapsed ? '<div class="code-fade" aria-hidden="true"></div>' : ''}
       </div>`:''}
       ${(c.noteTitle||c.noteText) ? `
@@ -285,6 +325,13 @@ function buildCardHTML(c, i){
         ${esc(c.noteText||'').replace(/\n/g,'<br>')}
       </div>`:''}
     </div>`;
+}
+
+// Helper: convert hex + opacity to rgba string
+function hexToRgba(hex, opacity){
+  const rgb = hexToRgb(hex);
+  if(!rgb) return hex;
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${opacity})`;
 }
 
 // Group cards into rows: 'full' = solo row, 'half' = pair up two per row
@@ -310,10 +357,16 @@ function groupCardsIntoRows(cards){
 }
 
 function buildHeaderHTML(s){
+  const align = s.titleAlign || 'center';
+  const badgeStyle = s.badgeStyle || 'rect';
+  const weight = s.titleWeight != null ? s.titleWeight : 1000;
+  const spacing = s.titleSpacing != null ? s.titleSpacing : -5;
+  const titleStyle = `text-align:${align};`;
+  const tipsStyle = `font-weight:${weight};letter-spacing:${spacing}px;`;
   return `
-    <div class="title">
-      <div class="badge">${esc(s.badge)}</div>
-      <div class="tips">${esc(s.titleMain)} <span>${esc(s.titleAccent)}</span></div>
+    <div class="title" style="${titleStyle}">
+      <div class="badge badge-${badgeStyle}">${esc(s.badge)}</div>
+      <div class="tips" style="${tipsStyle}">${esc(s.titleMain)} <span>${esc(s.titleAccent)}</span></div>
       <div class="subtitle">${esc(s.subtitle)}</div>
     </div>
     <div class="intro ar">${esc(s.intro).replace(/\n/g,'<br>')}</div>`;
@@ -322,13 +375,14 @@ function buildHeaderHTML(s){
 function buildMiniHeaderHTML(s, pageNum, totalPages){
   return `
     <div class="mini-header">
-      <div class="badge mini">${esc(s.badge)}</div>
+      <div class="badge mini badge-${s.badgeStyle||'rect'}">${esc(s.badge)}</div>
       <div class="page-indicator">${pageNum} / ${totalPages}</div>
     </div>`;
 }
 
 function buildFooterHTML(s){
-  return `<div class="footer">${FOOTER_SVG}${esc(s.footer)}</div>`;
+  const icons = s.footerIcons !== false ? FOOTER_SVG : '';
+  return `<div class="footer">${icons}${esc(s.footer)}</div>`;
 }
 
 // Assemble a complete <section class="poster"> element
@@ -540,11 +594,13 @@ function renderSidebar(){
     </div>`;
   });
   colorHTML += '</div>';
+  colorHTML += `<div class="fld" style="margin-top:10px"><button type="button" class="addbtn" onclick="randomPalette()"><svg class="abi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M7.5 4.21 12 6.81l4.5-2.6"/><path d="M7.5 19.79V14.6L3 12"/><path d="M21 12l-4.5 2.6v5.19"/></svg><span>لوحة ألوان عشوائية متناسقة</span></button></div>`;
 
   // Theme
   let themeHTML = '<div class="themes">';
   THEMES.forEach(t=>{
-    themeHTML += `<button type="button" class="theme-opt ${s.theme===t.id?'sel':''}" onclick="setTheme('${t.id}')" aria-pressed="${s.theme===t.id?'true':'false'}">
+    themeHTML += `<button type="button" class="theme-opt ${s.theme===t.id?'sel':''}" onclick="setTheme('${t.id}')" aria-pressed="${s.theme===t.id?'true':'false'}" aria-label="${esc(t.nm)}">
+      <span class="th-prev ${t.id}" aria-hidden="true"></span>
       <span class="nm">${t.nm}</span>
     </button>`;
   });
@@ -553,8 +609,28 @@ function renderSidebar(){
   // Title fields
   const titleHTML = `
     <div class="fld"><label>الشارة (Badge)</label><input type="text" value="${esc(s.badge)}" oninput="setField('badge',this.value)"></div>
+    <div class="fld"><label>نمط الشارة</label>
+      <div class="btn-group">
+        <button type="button" class="mini-btn ${(s.badgeStyle||'rect')==='rect'?'active':''}" onclick="setField('badgeStyle','rect');renderSidebar()">مستطيل</button>
+        <button type="button" class="mini-btn ${s.badgeStyle==='pill'?'active':''}" onclick="setField('badgeStyle','pill');renderSidebar()">حبة</button>
+        <button type="button" class="mini-btn ${s.badgeStyle==='bar'?'active':''}" onclick="setField('badgeStyle','bar');renderSidebar()">شريط</button>
+      </div>
+    </div>
+    <div class="fld"><label>محاذاة العنوان</label>
+      <div class="btn-group">
+        <button type="button" class="mini-btn ${(s.titleAlign||'center')==='center'?'active':''}" onclick="setField('titleAlign','center');renderSidebar()">وسط</button>
+        <button type="button" class="mini-btn ${s.titleAlign==='left'?'active':''}" onclick="setField('titleAlign','left');renderSidebar()">يسار</button>
+        <button type="button" class="mini-btn ${s.titleAlign==='right'?'active':''}" onclick="setField('titleAlign','right');renderSidebar()">يمين</button>
+      </div>
+    </div>
     <div class="fld"><label>العنوان الرئيسي</label><input type="text" value="${esc(s.titleMain)}" oninput="setField('titleMain',this.value)"></div>
     <div class="fld"><label>الكلمة المميزة (لون مختلف)</label><input type="text" value="${esc(s.titleAccent)}" oninput="setField('titleAccent',this.value)"></div>
+    <div class="fld"><label>وزن خط العنوان — <b>${s.titleWeight!=null?s.titleWeight:1000}</b></label>
+      <input type="range" min="400" max="1000" step="100" value="${s.titleWeight!=null?s.titleWeight:1000}" oninput="setField('titleWeight',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value">
+    </div>
+    <div class="fld"><label>تباعد أحرف العنوان — <b>${s.titleSpacing!=null?s.titleSpacing:-5}px</b></label>
+      <input type="range" min="-10" max="20" value="${s.titleSpacing!=null?s.titleSpacing:-5}" oninput="setField('titleSpacing',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
+    </div>
     <div class="fld"><label>العنوان الفرعي</label><input type="text" value="${esc(s.subtitle)}" oninput="setField('subtitle',this.value)"></div>
     <div class="fld"><label>المقدمة (عربي RTL)</label><textarea oninput="setField('intro',this.value)">${esc(s.intro)}</textarea></div>`;
 
@@ -568,12 +644,13 @@ function renderSidebar(){
         <div class="mv">
           <button type="button" class="iconbtn" onclick="moveCard(${i},-1)" title="أعلى" aria-label="أعلى"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
           <button type="button" class="iconbtn" onclick="moveCard(${i},1)" title="أسفل" aria-label="أسفل"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <button type="button" class="iconbtn" onclick="duplicateCard(${i})" title="تكرار البطاقة" aria-label="تكرار"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
           <button type="button" class="iconbtn" onclick="toggleCard(${i})" title="طي" aria-label="طي"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
           <button type="button" class="iconbtn del" onclick="delCard(${i})" title="حذف" aria-label="حذف"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
       <div class="ci-body">
-        <div class="fld"><label>نوع البطاقة</label><select onchange="setCard(${i},'type',this.value);renderSidebar()"><option value="code" ${(c.type||'code')==='code'?'selected':''}>كود</option><option value="tip" ${c.type==='tip'?'selected':''}>نصيحة</option></select></div>
+        <div class="fld"><label>نوع البطاقة</label><select onchange="setCard(${i},'type',this.value);renderSidebar()"><option value="code" ${(c.type||'code')==='code'?'selected':''}>كود</option><option value="tip" ${c.type==='tip'?'selected':''}>نصيحة</option><option value="warning" ${c.type==='warning'?'selected':''}>تحذير</option><option value="info" ${c.type==='info'?'selected':''}>معلومة</option></select></div>
         <div class="fld"><label>العرض (تخطيط)</label>
           <div class="btn-group">
             <button type="button" class="mini-btn ${(c.span||'auto')==='auto'?'active':''}" onclick="setCard(${i},'span','auto');renderSidebar()">تلقائي</button>
@@ -602,10 +679,46 @@ function renderSidebar(){
         <div class="fld"><label>الكود ${c.rawCode?'(HTML خام مع spans)':'(تلوين تلقائي)'}</label><textarea style="min-height:120px;font-family:'Courier New',monospace;direction:ltr;text-align:left" oninput="setCard(${i},'code',this.value)">${esc(c.code)}</textarea></div>` : ''}
         <div class="fld"><label>عنوان الملاحظة</label><input type="text" value="${esc(c.noteTitle)}" oninput="setCard(${i},'noteTitle',this.value)"></div>
         <div class="fld"><label>نص الملاحظة (عربي)</label><textarea oninput="setCard(${i},'noteText',this.value)">${esc(c.noteText)}</textarea></div>
+        <div class="fld" style="margin-top:14px;border-top:1px solid var(--ui-line);padding-top:12px">
+          <label style="display:flex;align-items:center;justify-content:space-between">
+            <span>مظهر البطاقة (اختياري)</span>
+            <button type="button" class="addbtn" style="width:auto;padding:4px 10px;margin:0;font-size:10px" onclick="resetCardStyle(${i})">إعادة الضبط</button>
+          </label>
+        </div>
+        <div class="color-cell" style="margin-top:8px">
+          <input type="color" value="${c.bg||'#101722'}" oninput="setCard(${i},'bg',this.value);renderSidebar()">
+          <span class="lbl">لون الخلفية</span>
+          ${c.bg?`<button type="button" class="rm" style="margin:0;padding:2px 6px;font-size:10px" onclick="event.stopPropagation();setCard(${i},'bg','');renderSidebar()">إزالة</button>`:'<span></span>'}
+        </div>
+        <div class="fld"><label>شفافية الخلفية — <b>${c.bgOpacity!==''&&c.bgOpacity!=null?c.bgOpacity:'100'}%</b></label>
+          <input type="range" min="0" max="100" value="${c.bgOpacity!==''&&c.bgOpacity!=null?c.bgOpacity:100}" oninput="setCard(${i},'bgOpacity',this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'%'">
+        </div>
+        <div class="color-cell" style="margin-top:8px">
+          <input type="color" value="${c.borderColor||'#61dafb'}" oninput="setCard(${i},'borderColor',this.value);renderSidebar()">
+          <span class="lbl">لون الحدود</span>
+          ${c.borderColor?`<button type="button" class="rm" style="margin:0;padding:2px 6px;font-size:10px" onclick="event.stopPropagation();setCard(${i},'borderColor','');renderSidebar()">إزالة</button>`:'<span></span>'}
+        </div>
+        <div class="row">
+          <div class="fld"><label>عرض الحدود — <b>${c.borderWidth!==''&&c.borderWidth!=null?c.borderWidth:'1'}px</b></label>
+            <input type="range" min="0" max="6" value="${c.borderWidth!==''&&c.borderWidth!=null?c.borderWidth:1}" oninput="setCard(${i},'borderWidth',this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
+          </div>
+          <div class="fld"><label>نصف قطر الزاوية — <b>${c.radius!==''&&c.radius!=null?c.radius:'28'}px</b></label>
+            <input type="range" min="0" max="40" value="${c.radius!==''&&c.radius!=null?c.radius:28}" oninput="setCard(${i},'radius',this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
+          </div>
+        </div>
       </div>
     </div>`;
   });
-  cardsHTML += `<button type="button" class="addbtn" onclick="addCard()"><svg class="abi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>إضافة بطاقة</span></button>`;
+  cardsHTML += `<div class="tpl-row">
+    <button type="button" class="addbtn" onclick="addCard()"><svg class="abi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>بطاقة فارغة</span></button>
+  </div>
+  <div class="tpl-grid">
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('code')">كود + ملاحظة</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('tip')">نصيحة</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('warning')">تحذير</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('info')">معلومة</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('compare')">مقارنة</button>
+  </div>`;
 
   // Logo position controls block
   function posControls(key, isUser){
@@ -704,7 +817,18 @@ function renderSidebar(){
     ${highlightControls()}
     <div class="fld"><label>أو رابط شعار التقنية (URL)</label><input type="text" value="${esc(s.techLogo)}" oninput="setField('techLogo',this.value)" placeholder="https://..."></div>`;
 
-  const footHTML = `<div class="fld"><label>نص الفوتر (المعرّف)</label><input type="text" value="${esc(s.footer)}" oninput="setField('footer',this.value)"></div>`;
+  const footHTML = `
+    <div class="fld"><label>نص الفوتر (المعرّف)</label><input type="text" value="${esc(s.footer)}" oninput="setField('footer',this.value)"></div>
+    <div class="fld"><label class="chk"><input type="checkbox" ${s.footerIcons!==false?'checked':''} onchange="setField('footerIcons',this.checked);renderSidebar()"> إظهار أيقونات التواصل</label></div>`;
+  const codeHTML = `
+    <div class="fld"><label>ثيم تلوين الكود</label>
+      <div class="btn-group">
+        <button type="button" class="mini-btn ${(s.codeTheme||'dark')==='dark'?'active':''}" onclick="setField('codeTheme','dark');renderSidebar()">داكن</button>
+        <button type="button" class="mini-btn ${s.codeTheme==='light'?'active':''}" onclick="setField('codeTheme','light');renderSidebar()">فاتح</button>
+        <button type="button" class="mini-btn ${s.codeTheme==='contrast'?'active':''}" onclick="setField('codeTheme','contrast');renderSidebar()">تباين عالي</button>
+      </div>
+    </div>
+    <div class="fld"><label class="chk"><input type="checkbox" ${s.codeLineNumbers?'checked':''} onchange="setField('codeLineNumbers',this.checked);renderSidebar()"> إظهار أرقام الأسطر</label></div>`;
   const bgHighlightHTML = bgHighlightControls();
 
   // Page size + font scales
@@ -722,6 +846,9 @@ function renderSidebar(){
   const layoutHTML = `
     <div class="fld"><label>أبعاد الصورة</label>
       <select onchange="setPageSize(this.value)">${pageSizeOpts}</select>
+    </div>
+    <div class="fld"><label>جودة التصدير (PNG)</label>
+      <select onchange="setExportScale(this.value)">${EXPORT_SCALES.map(sc=>`<option value="${sc.v}" ${exportScale===sc.v?'selected':''}>${sc.label}</option>`).join('')}</select>
     </div>
     <div class="fld" style="margin-top:16px;border-top:1px solid var(--ui-line);padding-top:14px">
       <label style="display:flex;align-items:center;justify-content:space-between">
@@ -741,6 +868,7 @@ function renderSidebar(){
     sidebarSection('bghl','إضاءة الخلفية',icons.bghl,bgHighlightHTML,false) +
     sidebarSection('title','العنوان والمقدمة',icons.title,titleHTML,true) +
     sidebarSection('card','البطاقات',icons.card,cardsHTML,true) +
+    sidebarSection('code','الكود',icons.card,codeHTML,false) +
     sidebarSection('logo','الشعارات',icons.logo,logoHTML,false) +
     sidebarSection('foot','الفوتر',icons.foot,footHTML,false);
 
@@ -774,6 +902,32 @@ function applyPreset(key){
   renderAll();
   toast('تم تطبيق قالب '+p.label);
 }
+// HSL → HEX helper
+function hslToHex(h,s,l){
+  s/=100; l/=100;
+  const k=n=>(n+h/30)%12;
+  const a=s*Math.min(l,1-l);
+  const f=n=>{const v=l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return Math.round(255*v)};
+  const toHex=x=>x.toString(16).padStart(2,'0');
+  return '#'+toHex(f(0))+toHex(f(8))+toHex(f(4));
+}
+// Generate a harmonious palette from a random base hue
+function randomPalette(){
+  pushHistory();
+  const h = Math.floor(Math.random()*360);
+  const base = hslToHex(h, 70, 60);
+  const accent = hslToHex((h+30)%360, 65, 55);
+  const cyan = hslToHex((h+180)%360, 60, 65);
+  state.colors['--red'] = base;
+  state.colors['--red2'] = accent;
+  state.colors['--cyan'] = cyan;
+  // sync highlight colors
+  if(state.logoHighlight) state.logoHighlight.color = base;
+  if(state.bgHighlight) state.bgHighlight.color = base;
+  renderAll();
+  toast('تم توليد لوحة ألوان جديدة');
+}
+window.randomPalette = randomPalette;
 function setColor(k,v){
   if(!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return;
   state.colors[k]=v;
@@ -784,6 +938,8 @@ function setColor(k,v){
 }
 function setTheme(t){ pushHistory(); state.theme=t; renderAll(); }
 function setPageSize(v){ pushHistory(); state.pageSize=v; renderAll(); }
+function setExportScale(v){ exportScale=+v; toast('جودة التصدير: '+exportScale+'x'); }
+window.setExportScale = setExportScale;
 function setFontScale(key,v){
   if(!state.fontScales) state.fontScales=defaultFontScales();
   state.fontScales[key]=+v;
@@ -797,10 +953,34 @@ function setField(k,v){ state[k]=v; scheduleRender(); }
 function setCard(i,k,v){ state.cards[i][k]=v; scheduleRender(); if(k==='number'||k==='title') refreshCardHeader(i); }
 function toggleCardProp(i,k){ state.cards[i][k]=!state.cards[i][k]; scheduleRender(); }
 window.toggleCardProp = toggleCardProp;
+function resetCardStyle(i){ pushHistory(); ['bg','bgOpacity','borderColor','borderWidth','radius'].forEach(k=>state.cards[i][k]=''); renderAll(); toast('تم إعادة مظهر البطاقة'); }
+window.resetCardStyle = resetCardStyle;
 function refreshCardHeader(i){ const ci=document.getElementById('ci-'+i); if(!ci)return; ci.querySelector('.num').textContent=state.cards[i].number||'?'; ci.querySelector('.tt').textContent=state.cards[i].title||'بدون عنوان'; }
-function addCard(){ pushHistory(); state.cards.push({number:String(state.cards.length+1).padStart(2,'0'),title:'New Card',type:'code',ar:'',codeLang:'JSX',code:'',rawCode:false,noteTitle:'',noteText:'',span:'auto',compact:false,collapsed:false}); renderAll(); }
+function addCard(){ pushHistory(); state.cards.push({number:String(state.cards.length+1).padStart(2,'0'),title:'New Card',type:'code',ar:'',codeLang:'JSX',code:'',rawCode:false,noteTitle:'',noteText:'',span:'auto',compact:false,collapsed:false,bg:'',bgOpacity:'',borderColor:'',borderWidth:'',radius:''}); renderAll(); }
 function delCard(i){ pushHistory(); state.cards.splice(i,1); renderAll(); }
 function moveCard(i,dir){ const j=i+dir; if(j<0||j>=state.cards.length)return; pushHistory(); const a=state.cards; [a[i],a[j]]=[a[j],a[i]]; renderAll(); }
+function duplicateCard(i){ pushHistory(); const c=state.cards[i]; const copy=JSON.parse(JSON.stringify(c)); copy.number=String(state.cards.length+1).padStart(2,'0'); state.cards.splice(i+1,0,copy); renderAll(); toast('تم تكرار البطاقة'); }
+window.duplicateCard = duplicateCard;
+
+// Ready-made card templates
+const CARD_TEMPLATES = {
+  code: { number:'01', title:'New Code Card', type:'code', ar:'', codeLang:'JSX', code:'', rawCode:false, noteTitle:'متى تستخدمه؟', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  tip: { number:'01', title:'New Tip', type:'tip', ar:'', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  warning: { number:'01', title:'تحذير', type:'warning', ar:'تنبيه على ممارسة خاطئة أو فخ شائع.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  info: { number:'01', title:'معلومة', type:'info', ar:'معلومة إضافية أو سياق مهم.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  compare: { number:'01', title:'Comparison', type:'code', ar:'مقارنة بين نهجين.', codeLang:'JSX', code:'// Approach A\nconst a = ...\n\n// Approach B\nconst b = ...', rawCode:false, noteTitle:'أيهما أفضل؟', noteText:'استخدم A في الحالة X، و B في الحالة Y.', span:'full', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+};
+function addCardFromTemplate(key){
+  const tpl = CARD_TEMPLATES[key];
+  if(!tpl) return;
+  pushHistory();
+  const copy = JSON.parse(JSON.stringify(tpl));
+  copy.number = String(state.cards.length+1).padStart(2,'0');
+  state.cards.push(copy);
+  renderAll();
+  toast('تمت إضافة بطاقة ' + (key==='code'?'كود':key==='tip'?'نصيحة':key==='warning'?'تحذير':key==='info'?'معلومة':'مقارنة'));
+}
+window.addCardFromTemplate = addCardFromTemplate;
 function toggleCard(i){ const ci=document.getElementById('ci-'+i); if(ci) ci.classList.toggle('collapsed'); }
 function clearLogo(k){ pushHistory(); state[k]=''; renderAll(); }
 function setLogoPos(key, field, val){
@@ -892,10 +1072,24 @@ function applyLoadedState(loaded){
     if(!c.span) c.span='auto';
     if(c.compact==null) c.compact=false;
     if(c.collapsed==null) c.collapsed=false;
+    if(c.bg==null) c.bg='';
+    if(c.bgOpacity==null) c.bgOpacity='';
+    if(c.borderColor==null) c.borderColor='';
+    if(c.borderWidth==null) c.borderWidth='';
+    if(c.radius==null) c.radius='';
   });
   // backfill page size + font scale for old projects
   if(!state.pageSize) state.pageSize='auto';
   if(!state.fontScales) state.fontScales=defaultFontScales();
+  // backfill title/badge customization for old projects
+  if(!state.titleAlign) state.titleAlign='center';
+  if(!state.badgeStyle) state.badgeStyle='rect';
+  if(state.titleWeight==null) state.titleWeight=1000;
+  if(state.titleSpacing==null) state.titleSpacing=-5;
+  // backfill code/footer customization for old projects
+  if(!state.codeTheme) state.codeTheme='dark';
+  if(state.codeLineNumbers==null) state.codeLineNumbers=false;
+  if(state.footerIcons==null) state.footerIcons=true;
   if(state.fontScale!=null && !state.fontScales){ // migrate old single-scale
     state.fontScales=defaultFontScales();
     FONT_KEYS.forEach(f=>state.fontScales[f.k]=state.fontScale);
@@ -925,11 +1119,18 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
   "fontScales": { "badge":1, "tips":1, "subtitle":1, "intro":1, "number":1, "cardTitle":1, "cardBody":1, "code":1, "noteTitle":1, "noteText":1, "footer":1 },
   "theme": "theme-react",
   "badge": "REACT",
+  "badgeStyle": "rect",
+  "titleAlign": "center",
+  "titleWeight": 1000,
+  "titleSpacing": -5,
   "titleMain": "HOOKS",
   "titleAccent": "DEEP DIVE",
   "subtitle": "STATE & EFFECTS",
   "intro": "مقدمة عربية قصيرة من سطر أو سطرين تمهّد للموضوع.",
   "footer": "@egyitech",
+  "footerIcons": true,
+  "codeTheme": "dark",
+  "codeLineNumbers": false,
   "colors": { "--red": "#61dafb", "--red2": "#2a9ec4" },
   "cards": [
     {
@@ -941,7 +1142,12 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
       "code": "const x = 1;",
       "rawCode": false,
       "noteTitle": "متى تستخدمه؟",
-      "noteText": "ملاحظة عربية إرشادية قصيرة."
+      "noteText": "ملاحظة عربية إرشادية قصيرة.",
+      "bg": "",
+      "bgOpacity": "",
+      "borderColor": "",
+      "borderWidth": "",
+      "radius": ""
     }
   ]
 }
@@ -954,12 +1160,19 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
 | \`lang\` | التقنية: \`laravel\` \`vue\` \`react\` \`js\` \`css\` \`php\` \`tailwind\` \`bootstrap\` \`flutter\` — تضبط الألوان والشعار والثيم تلقائيًا |
 | \`pageSize\` | أبعاد الصورة: \`auto\` (يتمدد) \`sq1\` (900×900) \`portrait45\` (900×1125) \`tall23\` (900×1350) \`story916\` (900×1600). عند اختيار بُعد ثابت، المحتوى الزائد يُقسَّم تلقائيًا على صفحات متعددة |
 | \`fontScales\` | تحكم منفصل بحجم كل عنصر نصي (من \`0.5\` إلى \`1.6\`): \`badge\` \`tips\` \`subtitle\` \`intro\` \`number\` \`cardTitle\` \`cardBody\` \`code\` \`noteTitle\` \`noteText\` \`footer\`. خط أصغر = مساحة أكبر للبطاقات = صفحات أقل |
-| \`theme\` | الثيم البصري: \`theme-laravel\` \`theme-react\` \`theme-vue\` \`theme-js\` \`theme-css\` \`theme-php\` \`theme-tailwind\` \`theme-bootstrap\` \`theme-flutter\` \`theme-dots\` \`theme-curves\` \`theme-gradient\` \`theme-glow\` \`theme-particles\` |
+| \`theme\` | الثيم البصري: \`theme-laravel\` \`theme-react\` \`theme-vue\` \`theme-js\` \`theme-css\` \`theme-php\` \`theme-tailwind\` \`theme-bootstrap\` \`theme-flutter\` \`theme-dots\` \`theme-curves\` \`theme-gradient\` \`theme-glow\` \`theme-particles\` \`theme-hexagon\` \`theme-mesh\` \`theme-aurora\` \`theme-waves\` \`theme-minimal\` \`theme-grid\` |
 | \`badge\` | شارة صغيرة أعلى البوستر (بالإنجليزية، أحرف كبيرة) |
+| \`badgeStyle\` | نمط الشارة: \`rect\` (مستطيل) \`pill\` (حبة) \`bar\` (شريط) |
+| \`titleAlign\` | محاذاة العنوان: \`center\` \`left\` \`right\` |
+| \`titleWeight\` | وزن خط العنوان: \`400\` \`700\` \`900\` \`1000\` |
+| \`titleSpacing\` | تباعد أحرف العنوان بالبكسل (من \`-10\` إلى \`20\`) |
 | \`titleMain\` / \`titleAccent\` | العنوان الرئيسي على سطرين (بالإنجليزية، قصير وقوي) |
 | \`subtitle\` | سطر فرعي إنجليزي قصير |
 | \`intro\` | مقدمة عربية (RTL) — استخدم \\n للأسطر |
 | \`footer\` | توقيع أسفل البوستر |
+| \`footerIcons\` | \`true\` لإظهار أيقونات التواصل بجانب الفوتر، \`false\` لإخفائها |
+| \`codeTheme\` | ثيم تلوين الكود: \`dark\` (داكن) \`light\` (فاتح) \`contrast\` (تباين عالي) |
+| \`codeLineNumbers\` | \`true\` لإظهار أرقام الأسطر في كتل الكود |
 | \`colors\` | ألوان مخصصة اختيارية: \`--bg\` \`--red\` \`--red2\` \`--cyan\` \`--white\` \`--muted\` \`--panel\` \`--panel2\` |
 
 ## البطاقات (cards)
@@ -967,14 +1180,19 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
 - \`number\`: رقم البطاقة "01"، "02"...
 - \`title\`: عنوان البطاقة بالإنجليزية.
 - \`ar\`: شرح عربي (سطر إلى ثلاثة).
-- \`type\`: \`"code"\` لبطاقة كود، أو \`"tip"\` لبطاقة نصيحة نصية بدون كود.
+- \`type\`: \`"code"\` لبطاقة كود، \`"tip"\` لبطاقة نصيحة، \`"warning"\` لبطاقة تحذير، \`"info"\` لبطاقة معلومة.
 - \`codeLang\`: لغة التلوين — \`laravel\` \`vue\` \`react\` \`js\` \`jsx\` \`css\` \`html\` \`php\` \`tailwind\` \`bootstrap\` \`flutter\` \`python\` \`typescript\` \`bash\` \`sql\` \`json\` \`markdown\`.
 - \`code\`: الكود (استخدم \\n للأسطر). التلوين تلقائي.
 - \`rawCode\`: \`true\` فقط إذا أردت كتابة HTML ملوّن يدويًا بـ \`<span>\` — اتركها \`false\` عادةً.
 - \`noteTitle\` / \`noteText\`: ملاحظة عربية اختيارية أسفل البطاقة.
-- \`span\`: عرض البطاقة — \`"auto"\` (تلقائي: نصيحة/بدون كود → نصف، بكود → كامل) \`"full"\` (كامل العرض) \`"half"\` (نصف العرض، بطاقتان نصفيتان تُعرضان بجانب بعضهما لتوفير المساحة).
+- \`span\`: عرض البطاقة — \`"auto"\` (تلقائي: نصيحة/تحذير/معلومة/بدون كود → نصف، بكود → كامل) \`"full"\` (كامل العرض) \`"half"\` (نصف العرض، بطاقتان نصفيتان تُعرضان بجانب بعضهما لتوفير المساحة).
 - \`compact\`: \`true\` لتصغير الحشو والهوامش وتوفير مساحة رأسية.
 - \`collapsed\`: \`true\` لطي الكود (يظهر أول ~3 أسطر فقط مع تدرّج) — مفيد للكود الطويل.
+- \`bg\`: لون خلفية مخصص للبطاقة (hex) — فارغ = افتراضي.
+- \`bgOpacity\`: شفافية خلفية البطاقة من \`0\` إلى \`100\` (\`100\` = معتم).
+- \`borderColor\`: لون حدود مخصص للبطاقة (hex) — فارغ = افتراضي.
+- \`borderWidth\`: عرض الحدود بالبكسل (من \`0\` إلى \`6\`).
+- \`radius\`: نصف قطر زوايا البطاقة بالبكسل (من \`0\` إلى \`40\`).
 
 ## قواعد التصميم
 
@@ -982,7 +1200,7 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
 2. العناوين الإنجليزية قصيرة (كلمتان كحد أقصى لكل سطر).
 3. المقدمة والشروح والملاحظات بالعربية؛ العناوين والكود والشارة بالإنجليزية.
 4. الكود قصير (حتى ~10 أسطر) وواقعي وصحيح نحويًا.
-5. نوّع بين بطاقات \`code\` و\`tip\` عند الحاجة — استخدم \`tip\` للنقاط النظرية.
+5. نوّع بين بطاقات \`code\` و\`tip\` و\`warning\` و\`info\` عند الحاجة — استخدم \`tip\` للنقاط النظرية، \`warning\` للممارسات الخاطئة، \`info\` للمعلومات الإضافية.
 6. اختر \`lang\` المطابق لموضوع البوستر؛ إن لم يكن له قالب استخدم \`colors\` مخصصة مع ثيم مناسب.
 7. أخرج JSON خامًا صالحًا فقط — بلا شرح، بلا markdown إن أمكن (يُقبل \`\`\`json أيضًا).
 `;
@@ -1139,7 +1357,7 @@ async function rasterizePoster(poster,width,height,scale){
   return canvas;
 }
 
-async function renderPosterCanvas(scale=EXPORT_SCALE, sourcePoster){
+async function renderPosterCanvas(scale=exportScale, sourcePoster){
   if(!sourcePoster) sourcePoster=document.querySelector('#stage > .poster');
   if(!sourcePoster) throw new Error('لا يوجد بوستر');
 
@@ -1179,7 +1397,7 @@ async function exportPNG(){
   toast(total>1 ? `جاري تصدير ${total} صفحات...` : 'جاري التصدير...');
   try{
     for(let i=0;i<total;i++){
-      const canvas=await renderPosterCanvas(EXPORT_SCALE, posters[i]);
+      const canvas=await renderPosterCanvas(exportScale, posters[i]);
       const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('تعذر إنشاء ملف PNG')),'image/png'));
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
