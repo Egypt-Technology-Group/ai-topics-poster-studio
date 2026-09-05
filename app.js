@@ -237,7 +237,7 @@ function renderPoster(){
 function sidebarSection(id, title, icon, bodyHTML, open){
   return `<div class="sec ${open?'open':''}" id="sec-${id}">
     <button type="button" class="sec-h" onclick="toggleSec('${id}')" aria-expanded="${open?'true':'false'}" aria-controls="sec-${id}-body">
-      ${icon}<span>${title}</span><span class="arr" aria-hidden="true">▶</span>
+      ${icon}<span>${title}</span><svg class="arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
     <div class="sec-b" id="sec-${id}-body">${bodyHTML}</div>
   </div>`;
@@ -253,13 +253,13 @@ window.toggleSec = toggleSec;
 function renderSidebar(){
   const s = state;
   const icons = {
-    lang:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
-    color:'<svg class="ic" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4"/></svg>',
-    theme:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>',
-    title:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5h14M5 12h14M5 19h6"/></svg>',
-    card:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>',
-    logo:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',
-    foot:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l4-4 4 4 8-8"/></svg>',
+    lang:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7"/><path d="M9 3v2c0 4.4-2.7 8.4-6.5 10.5"/><path d="M5 9c0 2.4 3.1 4.5 7 5"/><path d="M14 19l4-9 4 9"/><path d="M15.5 16h5"/></svg>',
+    color:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22a10 10 0 1 1 0-20 8 8 0 0 1 8 8c0 2.5-1.7 4.6-4 5.2-1.6.4-3 .8-3 2a2 2 0 0 0 2 2 2 2 0 0 1-2 2z"/></svg>',
+    theme:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>',
+    title:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+    card:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><line x1="7" y1="7.5" x2="7" y2="7.5"/><line x1="7" y1="16.5" x2="7" y2="16.5"/></svg>',
+    logo:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',
+    foot:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l4-4 4 4 8-8"/><path d="M12 9h8v8"/></svg>',
   };
 
   // Language / preset
@@ -307,10 +307,10 @@ function renderSidebar(){
         <div class="num">${esc(c.number||'?')}</div>
         <div class="tt">${esc(c.title||'بدون عنوان')}</div>
         <div class="mv">
-          <button type="button" class="iconbtn" onclick="moveCard(${i},-1)" title="أعلى" aria-label="أعلى">▲</button>
-          <button type="button" class="iconbtn" onclick="moveCard(${i},1)" title="أسفل" aria-label="أسفل">▼</button>
-          <button type="button" class="iconbtn" onclick="toggleCard(${i})" title="طي" aria-label="طي">▾</button>
-          <button type="button" class="iconbtn del" onclick="delCard(${i})" title="حذف" aria-label="حذف">✕</button>
+          <button type="button" class="iconbtn" onclick="moveCard(${i},-1)" title="أعلى" aria-label="أعلى"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+          <button type="button" class="iconbtn" onclick="moveCard(${i},1)" title="أسفل" aria-label="أسفل"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <button type="button" class="iconbtn" onclick="toggleCard(${i})" title="طي" aria-label="طي"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <button type="button" class="iconbtn del" onclick="delCard(${i})" title="حذف" aria-label="حذف"><svg class="ibi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       </div>
       <div class="ci-body">
@@ -333,7 +333,7 @@ function renderSidebar(){
       </div>
     </div>`;
   });
-  cardsHTML += `<button type="button" class="addbtn" onclick="addCard()">+ إضافة بطاقة</button>`;
+  cardsHTML += `<button type="button" class="addbtn" onclick="addCard()"><svg class="abi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>إضافة بطاقة</span></button>`;
 
   // Logo position controls block
   function posControls(key, isUser){
