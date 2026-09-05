@@ -1324,7 +1324,7 @@ select {
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.55);
   width: var(--poster-width, 900px);
   color: var(--white, #f4f5f7);
-  font-family: Inter, Arial, sans-serif;
+  font-family: var(--poster-font, Inter), Arial, sans-serif;
   --fs-badge: 1;
   --fs-tips: 1;
   --fs-subtitle: 1;
@@ -1500,7 +1500,7 @@ select {
   text-align: start;
 }
 .ar {
-  font-family: "Cairo", Tahoma, Arial, sans-serif;
+  font-family: var(--poster-font, "Cairo"), "Cairo", Tahoma, Arial, sans-serif;
   direction: rtl;
   text-align: right;
 }
