@@ -79,6 +79,7 @@ function defaultState(){
     userLogoPos:{ pos:"auto-tl", size:210, dx:0, dy:0 },
     techLogoPos:{ pos:"tr", size:230, dx:45, dy:50 },
     logoHighlight:{ enabled:true, color:"#61dafb", blur:25, opacity:0.35, x:0, y:0 },
+    bgHighlight:{ enabled:true, color:"#61dafb", opacity:0.38, x:85, y:0, size:30 },
     footer:"@egyitech",
     cards:[
       { number:"01", title:"Functional Updates", ar:"استخدم التحديث الدالي لمنع التضارب عند عدة تحديثات متتالية للحالة.",
@@ -207,6 +208,12 @@ function renderPoster(){
     <svg viewBox="0 0 24 24" aria-label="Facebook"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
     <svg class="globe" viewBox="0 0 24 24" aria-label="Website"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20z"/></svg>`;
 
+  // Background highlight CSS vars
+  const bg = s.bgHighlight || { enabled:true, color:'#61dafb', opacity:0.38, x:85, y:0, size:30 };
+  let bgVars = bg.enabled !== false
+    ? (()=>{ const rgb=hexToRgb(bg.color)||hexToRgb(s.colors['--red'])||hexToRgb('#61dafb'); return rgb ? `--bg-hl-r:${rgb.r};--bg-hl-g:${rgb.g};--bg-hl-b:${rgb.b};--bg-hl-opacity:${bg.opacity??0.38};--bg-hl-x:${bg.x??85}%;--bg-hl-y:${bg.y??0}%;--bg-hl-size:${bg.size??30}%;` : ''; })()
+    : '--bg-hl-opacity:0;';
+
   // Logo positioning
   const ul = s.userLogoPos || {pos:"auto-tl",size:210,dx:0,dy:0};
   const tl = s.techLogoPos || {pos:"tr",size:230,dx:45,dy:50};
@@ -234,7 +241,7 @@ function renderPoster(){
   const techStyle = cornerStyle(tl)+`width:${tl.size}px;height:${Math.round(tl.size*190/230)}px;${techFilter}`;
 
   const html = `
-  <section class="poster ${esc(s.theme)}" dir="ltr" style="--poster-width:${POSTER_WIDTH}px;--poster-min-height:${POSTER_MIN_HEIGHT}px;${cssVars}">
+  <section class="poster ${esc(s.theme)}" dir="ltr" style="--poster-width:${POSTER_WIDTH}px;--poster-min-height:${POSTER_MIN_HEIGHT}px;${cssVars};${bgVars}">
     <div class="curve"></div>
     <div class="${userWrapClass}" style="${userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
     <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${techStyle}">
@@ -277,6 +284,7 @@ function renderSidebar(){
     card:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><line x1="7" y1="7.5" x2="7" y2="7.5"/><line x1="7" y1="16.5" x2="7" y2="16.5"/></svg>',
     logo:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>',
     foot:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l4-4 4 4 8-8"/><path d="M12 9h8v8"/></svg>',
+    bghl:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>',
   };
 
   // Language / preset
@@ -396,6 +404,38 @@ function renderSidebar(){
     </div>`;
   }
 
+  function bgHighlightControls(){
+    const h = s.bgHighlight || { enabled:true, color:'#61dafb', opacity:0.38, x:85, y:0, size:30 };
+    return `
+    <div class="fld">
+      <label class="chk"><input type="checkbox" ${h.enabled!==false?'checked':''} onchange="setBgHighlight('enabled',this.checked)"> تفعيل الهايلايت الخلفي</label>
+    </div>
+    <div class="fld">
+      <label>لون الهايلايت الخلفي</label>
+      <div class="color-cell bg-hl-color">
+        <input type="color" value="${h.color||'#61dafb'}" oninput="setBgHighlight('color',this.value)">
+        <span class="lbl">لون الخلفية</span>
+        <input class="hex" type="text" value="${h.color||'#61dafb'}" oninput="setBgHighlight('color',this.value)">
+      </div>
+    </div>
+    <div class="row">
+      <div class="fld"><label>الشفافية — <b>${Math.round((h.opacity??0.38)*100)}%</b></label>
+        <input type="range" min="0" max="100" value="${Math.round((h.opacity??0.38)*100)}" oninput="setBgHighlight('opacity',+this.value/100);this.previousElementSibling.querySelector('b').textContent=this.value+'%'">
+      </div>
+      <div class="fld"><label>حجم الانتشار — <b>${h.size??30}%</b></label>
+        <input type="range" min="0" max="100" value="${h.size??30}" oninput="setBgHighlight('size',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'%'">
+      </div>
+    </div>
+    <div class="row">
+      <div class="fld"><label>الموضع X — <b>${h.x??85}%</b></label>
+        <input type="range" min="0" max="100" value="${h.x??85}" oninput="setBgHighlight('x',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'%'">
+      </div>
+      <div class="fld"><label>الموضع Y — <b>${h.y??0}%</b></label>
+        <input type="range" min="0" max="100" value="${h.y??0}" oninput="setBgHighlight('y',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'%'">
+      </div>
+    </div>`;
+  }
+
   // Logos
   const logoHTML = `
     <div class="fld"><label>شعار المستخدم</label>
@@ -418,12 +458,14 @@ function renderSidebar(){
     <div class="fld"><label>أو رابط شعار التقنية (URL)</label><input type="text" value="${esc(s.techLogo)}" oninput="setField('techLogo',this.value)" placeholder="https://..."></div>`;
 
   const footHTML = `<div class="fld"><label>نص الفوتر (المعرّف)</label><input type="text" value="${esc(s.footer)}" oninput="setField('footer',this.value)"></div>`;
+  const bgHighlightHTML = bgHighlightControls();
 
   const sb = document.getElementById('sidebar');
   sb.innerHTML =
     sidebarSection('lang','اللغة / القالب',icons.lang,presetHTML,true) +
     sidebarSection('color','الألوان',icons.color,colorHTML,false) +
     sidebarSection('theme','ثيم الخلفية',icons.theme,themeHTML,false) +
+    sidebarSection('bghl','إضاءة الخلفية',icons.bghl,bgHighlightHTML,false) +
     sidebarSection('title','العنوان والمقدمة',icons.title,titleHTML,true) +
     sidebarSection('card','البطاقات',icons.card,cardsHTML,true) +
     sidebarSection('logo','الشعارات',icons.logo,logoHTML,false) +
@@ -455,6 +497,7 @@ function applyPreset(key){
   state.badge = p.badge;
   state.techLogo = TECH_LOGOS[p.tech];
   state.logoHighlight = Object.assign({enabled:true,color:p.red,blur:25,opacity:0.35,x:0,y:0}, state.logoHighlight||{}, {enabled:true,color:p.red});
+  state.bgHighlight = Object.assign({enabled:true,color:p.red,opacity:0.38,x:85,y:0,size:30}, state.bgHighlight||{}, {enabled:true,color:p.red});
   renderAll();
   toast('تم تطبيق قالب '+p.label);
 }
@@ -510,6 +553,25 @@ function setLogoHighlight(k,v){
 }
 window.setLogoHighlight = setLogoHighlight;
 
+function setBgHighlight(k,v){
+  if(!state.bgHighlight) state.bgHighlight = { enabled:true, color:'#61dafb', opacity:0.38, x:85, y:0, size:30 };
+  if(k==='enabled') state.bgHighlight.enabled = !!v;
+  else if(k==='color'){
+    let c = (v||'').trim().toLowerCase();
+    if(/^([a-f\d]{3})$/i.test(c)) c='#'+c;
+    else if(/^([a-f\d]{6})$/i.test(c)) c='#'+c;
+    state.bgHighlight.color = c;
+  }
+  else state.bgHighlight[k] = +v;
+  scheduleRender();
+  if(k==='color'){
+    const cell = document.querySelector('.color-cell.bg-hl-color');
+    const c = state.bgHighlight.color;
+    if(cell){ cell.querySelector('input[type=color]').value=c; cell.querySelector('.hex').value=c; }
+  }
+}
+window.setBgHighlight = setBgHighlight;
+
 function pickFile(key){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.onchange=()=>{ if(inp.files[0]) readImage(inp.files[0],key); }; inp.click(); }
 function readImage(file,key){
   const r=new FileReader();
@@ -536,6 +598,7 @@ function loadJSON(file){
     state.userLogoPos=Object.assign({pos:"auto-tl",size:210,dx:0,dy:0}, loaded.userLogoPos||{});
     state.techLogoPos=Object.assign({pos:"tr",size:230,dx:45,dy:50}, loaded.techLogoPos||{});
     state.logoHighlight=Object.assign({enabled:true,color:'#61dafb',blur:25,opacity:0.35,x:0,y:0}, loaded.logoHighlight||{});
+    state.bgHighlight=Object.assign({enabled:true,color:'#61dafb',opacity:0.38,x:85,y:0,size:30}, loaded.bgHighlight||{});
     // backfill card.type for old projects
     (state.cards||[]).forEach(c=>{ if(!c.type) c.type='code'; });
     future=[]; renderAll(); toast('تم تحميل المشروع');
