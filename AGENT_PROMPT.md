@@ -11,6 +11,8 @@
 ```json
 {
   "lang": "react",
+  "pageSize": "auto",
+  "fontScales": { "badge":1, "tips":1, "subtitle":1, "intro":1, "number":1, "cardTitle":1, "cardBody":1, "code":1, "noteTitle":1, "noteText":1, "footer":1 },
   "theme": "theme-react",
   "badge": "REACT",
   "titleMain": "HOOKS",
@@ -40,6 +42,8 @@
 | الحقل | الوصف |
 |-------|--------|
 | `lang` | التقنية: `laravel` `vue` `react` `js` `css` `php` `tailwind` `bootstrap` `flutter` — تضبط الألوان والشعار والثيم تلقائيًا |
+| `pageSize` | أبعاد الصورة: `auto` (يتمدد) `sq1` (900×900) `portrait45` (900×1125) `tall23` (900×1350) `story916` (900×1600). عند اختيار بُعد ثابت، المحتوى الزائد يُقسَّم تلقائيًا على صفحات متعددة |
+| `fontScales` | تحكم منفصل بحجم كل عنصر نصي (من `0.5` إلى `1.6`): `badge` `tips` `subtitle` `intro` `number` `cardTitle` `cardBody` `code` `noteTitle` `noteText` `footer`. خط أصغر = مساحة أكبر للبطاقات = صفحات أقل |
 | `theme` | الثيم البصري: `theme-laravel` `theme-react` `theme-vue` `theme-js` `theme-css` `theme-php` `theme-tailwind` `theme-bootstrap` `theme-flutter` `theme-dots` `theme-curves` `theme-gradient` `theme-glow` `theme-particles` |
 | `badge` | شارة صغيرة أعلى البوستر (بالإنجليزية، أحرف كبيرة) |
 | `titleMain` / `titleAccent` | العنوان الرئيسي على سطرين (بالإنجليزية، قصير وقوي) |
