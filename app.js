@@ -7,7 +7,7 @@ const DEFAULT_USER_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAAT
 
 // Tech logo URLs (devicon CDN)
 const TECH_LOGOS = {
-  laravel:  "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-plain.svg",
+  laravel:  "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-original.svg",
   vue:      "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vuejs/vuejs-original.svg",
   react:    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg",
   js:       "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg",
@@ -77,7 +77,7 @@ function defaultState(){
     footer:"@egyitech",
     cards:[
       { number:"01", title:"Functional Updates", ar:"استخدم التحديث الدالي لمنع التضارب عند عدة تحديثات متتالية للحالة.",
-        codeLang:"JSX", code:"const [count, setCount] = useState(0);\n\n// Always use the functional form\nsetCount(c => c + 1);", rawCode:false,
+        type:"code", codeLang:"JSX", code:"const [count, setCount] = useState(0);\n\n// Always use the functional form\nsetCount(c => c + 1);", rawCode:false,
         noteTitle:"متى تستخدمه؟", noteText:"معالجة المدفوعات، تنفيذ الطلبات، Webhooks، ومنع العمليات المكررة." }
     ]
   };
@@ -155,7 +155,22 @@ function highlightCode(code, lang){
 function renderPoster(){
   const s = state;
   const cssVars = COLOR_VARS.map(v=>`${v.k}:${s.colors[v.k]||''}`).join(';');
-  const cards = s.cards.map((c,i)=>`
+  const cards = s.cards.map((c,i)=>{
+    const ctype = c.type || 'code';
+    if(ctype === 'tip'){
+      return `
+    <div class="card type-tip" data-i="${i}">
+      <div class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></div>
+      <h2>${esc(c.title)}</h2>
+      <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
+      ${(c.noteTitle||c.noteText) ? `
+      <div class="note ar">
+        ${c.noteTitle?`<strong>${esc(c.noteTitle)}</strong><br>`:''}
+        ${esc(c.noteText||'').replace(/\n/g,'<br>')}
+      </div>`:''}
+    </div>`;
+    }
+    return `
     <div class="card" data-i="${i}">
       <div class="number">${esc(c.number)}</div>
       <h2>${esc(c.title)}</h2>
@@ -173,7 +188,8 @@ function renderPoster(){
         ${c.noteTitle?`<strong>${esc(c.noteTitle)}</strong><br>`:''}
         ${esc(c.noteText||'').replace(/\n/g,'<br>')}
       </div>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const footerSVG = `
     <svg viewBox="0 0 24 24" aria-label="Instagram"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
@@ -220,14 +236,17 @@ function renderPoster(){
 // ---------- Sidebar render ----------
 function sidebarSection(id, title, icon, bodyHTML, open){
   return `<div class="sec ${open?'open':''}" id="sec-${id}">
-    <div class="sec-h" onclick="toggleSec('${id}')">
-      ${icon}<span>${title}</span><span class="arr">▶</span>
-    </div>
-    <div class="sec-b">${bodyHTML}</div>
+    <button type="button" class="sec-h" onclick="toggleSec('${id}')" aria-expanded="${open?'true':'false'}" aria-controls="sec-${id}-body">
+      ${icon}<span>${title}</span><span class="arr" aria-hidden="true">▶</span>
+    </button>
+    <div class="sec-b" id="sec-${id}-body">${bodyHTML}</div>
   </div>`;
 }
 function toggleSec(id){
-  document.getElementById('sec-'+id).classList.toggle('open');
+  const sec = document.getElementById('sec-'+id);
+  sec.classList.toggle('open');
+  const btn = sec.querySelector('.sec-h');
+  if(btn) btn.setAttribute('aria-expanded', sec.classList.contains('open'));
 }
 window.toggleSec = toggleSec;
 
@@ -247,7 +266,7 @@ function renderSidebar(){
   let presetHTML = '<div class="presets">';
   Object.keys(PRESETS).forEach(k=>{
     const p=PRESETS[k];
-    presetHTML += `<div class="preset" onclick="applyPreset('${k}')"><span class="sw" style="background:${p.red}"></span>${p.label}</div>`;
+    presetHTML += `<button type="button" class="preset" onclick="applyPreset('${k}')" aria-pressed="${s.lang===k?'true':'false'}"><span class="sw" style="background:${p.red}"></span>${p.label}</button>`;
   });
   presetHTML += '</div>';
 
@@ -266,9 +285,9 @@ function renderSidebar(){
   // Theme
   let themeHTML = '<div class="themes">';
   THEMES.forEach(t=>{
-    themeHTML += `<div class="theme-opt ${s.theme===t.id?'sel':''}" onclick="setTheme('${t.id}')">
-      <div class="nm">${t.nm}</div>
-    </div>`;
+    themeHTML += `<button type="button" class="theme-opt ${s.theme===t.id?'sel':''}" onclick="setTheme('${t.id}')" aria-pressed="${s.theme===t.id?'true':'false'}">
+      <span class="nm">${t.nm}</span>
+    </button>`;
   });
   themeHTML += '</div>';
 
@@ -288,31 +307,33 @@ function renderSidebar(){
         <div class="num">${esc(c.number||'?')}</div>
         <div class="tt">${esc(c.title||'بدون عنوان')}</div>
         <div class="mv">
-          <button class="iconbtn" onclick="moveCard(${i},-1)" title="أعلى">▲</button>
-          <button class="iconbtn" onclick="moveCard(${i},1)" title="أسفل">▼</button>
-          <button class="iconbtn" onclick="toggleCard(${i})" title="طي">▾</button>
-          <button class="iconbtn del" onclick="delCard(${i})" title="حذف">✕</button>
+          <button type="button" class="iconbtn" onclick="moveCard(${i},-1)" title="أعلى" aria-label="أعلى">▲</button>
+          <button type="button" class="iconbtn" onclick="moveCard(${i},1)" title="أسفل" aria-label="أسفل">▼</button>
+          <button type="button" class="iconbtn" onclick="toggleCard(${i})" title="طي" aria-label="طي">▾</button>
+          <button type="button" class="iconbtn del" onclick="delCard(${i})" title="حذف" aria-label="حذف">✕</button>
         </div>
       </div>
       <div class="ci-body">
+        <div class="fld"><label>نوع البطاقة</label><select onchange="setCard(${i},'type',this.value);renderSidebar()"><option value="code" ${(c.type||'code')==='code'?'selected':''}>كود</option><option value="tip" ${c.type==='tip'?'selected':''}>نصيحة</option></select></div>
         <div class="row">
           <div class="fld"><label>الرقم</label><input type="text" value="${esc(c.number)}" oninput="setCard(${i},'number',this.value)"></div>
           <div class="fld"><label>عنوان البطاقة (EN)</label><input type="text" value="${esc(c.title)}" oninput="setCard(${i},'title',this.value)"></div>
         </div>
         <div class="fld"><label>النص العربي (RTL)</label><textarea oninput="setCard(${i},'ar',this.value)">${esc(c.ar)}</textarea></div>
+        ${(c.type||'code')==='code' ? `
         <div class="row">
-          <div class="fld"><label>لغة الكود</label><input type="text" value="${esc(c.codeLang)}" oninput="setCard(${i},'codeLang',this.value)" placeholder="PHP / JSX / Vue / JS"></div>
+          <div class="fld"><label>لغة الكود</label><select onchange="setCard(${i},'codeLang',this.value)">${[{v:'laravel',l:'Laravel'},{v:'vue',l:'Vue'},{v:'react',l:'React'},{v:'js',l:'JS'},{v:'jsx',l:'JSX'},{v:'css',l:'CSS'},{v:'html',l:'HTML'},{v:'php',l:'PHP'},{v:'tailwind',l:'Tailwind'},{v:'bootstrap',l:'Bootstrap'},{v:'flutter',l:'Flutter'},{v:'python',l:'Python'},{v:'typescript',l:'TypeScript'},{v:'bash',l:'Bash'},{v:'sql',l:'SQL'},{v:'json',l:'JSON'},{v:'markdown',l:'Markdown'}].map(l=>`<option value="${l.v}" ${(c.codeLang||'').toLowerCase()===l.v?'selected':''}>${l.l}</option>`).join('')}</select></div>
           <div class="fld" style="flex:0 0 130px;align-self:flex-end">
             <label class="chk"><input type="checkbox" ${c.rawCode?'checked':''} onchange="setCard(${i},'rawCode',this.checked)"> كود HTML خام</label>
           </div>
         </div>
-        <div class="fld"><label>الكود ${c.rawCode?'(HTML خام مع spans)':'(تلوين تلقائي)'}</label><textarea style="min-height:120px;font-family:'Courier New',monospace;direction:ltr;text-align:left" oninput="setCard(${i},'code',this.value)">${esc(c.code)}</textarea></div>
+        <div class="fld"><label>الكود ${c.rawCode?'(HTML خام مع spans)':'(تلوين تلقائي)'}</label><textarea style="min-height:120px;font-family:'Courier New',monospace;direction:ltr;text-align:left" oninput="setCard(${i},'code',this.value)">${esc(c.code)}</textarea></div>` : ''}
         <div class="fld"><label>عنوان الملاحظة</label><input type="text" value="${esc(c.noteTitle)}" oninput="setCard(${i},'noteTitle',this.value)"></div>
         <div class="fld"><label>نص الملاحظة (عربي)</label><textarea oninput="setCard(${i},'noteText',this.value)">${esc(c.noteText)}</textarea></div>
       </div>
     </div>`;
   });
-  cardsHTML += `<button class="addbtn" onclick="addCard()">+ إضافة بطاقة</button>`;
+  cardsHTML += `<button type="button" class="addbtn" onclick="addCard()">+ إضافة بطاقة</button>`;
 
   // Logo position controls block
   function posControls(key, isUser){
@@ -333,24 +354,24 @@ function renderSidebar(){
         <div class="fld"><label>إزاحة X (px)</label><input type="number" value="${p.dx}" oninput="setLogoPos('${key}','dx',+this.value||0)"></div>
         <div class="fld"><label>إزاحة Y (px)</label><input type="number" value="${p.dy}" oninput="setLogoPos('${key}','dy',+this.value||0)"></div>
       </div>
-      <div class="fld"><button class="addbtn" onclick="resetLogoPos('${key}')">إعادة للموضع الافتراضي</button></div>`;
+      <div class="fld"><button type="button" class="addbtn" onclick="resetLogoPos('${key}')">إعادة للموضع الافتراضي</button></div>`;
   }
 
   // Logos
   const logoHTML = `
     <div class="fld"><label>شعار المستخدم</label>
-      <div class="drop" id="dropUser" onclick="pickFile('userLogo')">
-        ${s.userLogo ? `<img class="pv" src="${esc(s.userLogo)}">`:''}
+      <div class="drop" id="dropUser" role="button" tabindex="0" aria-label="رفع شعار المستخدم" onclick="pickFile('userLogo')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickFile('userLogo')}">
+        ${s.userLogo ? `<img class="pv" alt="معاينة شعار المستخدم" src="${esc(s.userLogo)}">`:''}
         <div class="pl">اسحب صورة هنا أو انقر للرفع</div>
-        ${s.userLogo?`<button class="rm" onclick="event.stopPropagation();clearLogo('userLogo')">إزالة</button>`:''}
+        ${s.userLogo?`<button type="button" class="rm" onclick="event.stopPropagation();clearLogo('userLogo')">إزالة</button>`:''}
       </div>
     </div>
     ${posControls('userLogoPos',true)}
     <div class="fld" style="margin-top:18px;border-top:1px solid var(--ui-line);padding-top:14px"><label>شعار التقنية</label>
-      <div class="drop" id="dropTech" onclick="pickFile('techLogo')">
-        ${s.techLogo ? `<img class="pv" src="${esc(s.techLogo)}">`:''}
+      <div class="drop" id="dropTech" role="button" tabindex="0" aria-label="رفع شعار التقنية" onclick="pickFile('techLogo')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickFile('techLogo')}">
+        ${s.techLogo ? `<img class="pv" alt="معاينة شعار التقنية" src="${esc(s.techLogo)}">`:''}
         <div class="pl">اسحب صورة هنا أو انقر للرفع</div>
-        ${s.techLogo?`<button class="rm" onclick="event.stopPropagation();clearLogo('techLogo')">إزالة</button>`:''}
+        ${s.techLogo?`<button type="button" class="rm" onclick="event.stopPropagation();clearLogo('techLogo')">إزالة</button>`:''}
       </div>
     </div>
     ${posControls('techLogoPos',false)}
@@ -408,7 +429,7 @@ function setTheme(t){ pushHistory(); state.theme=t; renderAll(); }
 function setField(k,v){ state[k]=v; scheduleRender(); }
 function setCard(i,k,v){ state.cards[i][k]=v; scheduleRender(); if(k==='number'||k==='title') refreshCardHeader(i); }
 function refreshCardHeader(i){ const ci=document.getElementById('ci-'+i); if(!ci)return; ci.querySelector('.num').textContent=state.cards[i].number||'?'; ci.querySelector('.tt').textContent=state.cards[i].title||'بدون عنوان'; }
-function addCard(){ pushHistory(); state.cards.push({number:String(state.cards.length+1).padStart(2,'0'),title:'New Card',ar:'',codeLang:'JSX',code:'',rawCode:false,noteTitle:'',noteText:''}); renderAll(); }
+function addCard(){ pushHistory(); state.cards.push({number:String(state.cards.length+1).padStart(2,'0'),title:'New Card',type:'code',ar:'',codeLang:'JSX',code:'',rawCode:false,noteTitle:'',noteText:''}); renderAll(); }
 function delCard(i){ pushHistory(); state.cards.splice(i,1); renderAll(); }
 function moveCard(i,dir){ const j=i+dir; if(j<0||j>=state.cards.length)return; pushHistory(); const a=state.cards; [a[i],a[j]]=[a[j],a[i]]; renderAll(); }
 function toggleCard(i){ const ci=document.getElementById('ci-'+i); if(ci) ci.classList.toggle('collapsed'); }
@@ -452,6 +473,8 @@ function loadJSON(file){
     // deep-merge logo positions so old projects keep defaults for missing fields
     state.userLogoPos=Object.assign({pos:"auto-tl",size:210,dx:0,dy:0}, loaded.userLogoPos||{});
     state.techLogoPos=Object.assign({pos:"tr",size:230,dx:45,dy:50}, loaded.techLogoPos||{});
+    // backfill card.type for old projects
+    (state.cards||[]).forEach(c=>{ if(!c.type) c.type='code'; });
     future=[]; renderAll(); toast('تم تحميل المشروع');
   }catch(e){ toast('ملف غير صالح'); } };
   r.readAsText(file);

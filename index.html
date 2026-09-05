@@ -4,6 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="dark" />
 <title>AI Topics — Poster Editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;1000&family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
@@ -12,34 +13,35 @@
 </head>
 
 <body>
-<div class="topbar">
+<a href="#main-content" class="skip-link">تخطي إلى المعاينة</a>
+<header class="topbar" role="banner" aria-label="شريط أدوات AI Topics">
   <div class="brand"><div class="dot"></div>AI Topics <span style="opacity:.5;font-weight:400">Poster Editor</span></div>
-  <div class="spacer"></div>
-  <button class="tbtn" id="btnUndo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
-  <button class="tbtn" id="btnRedo" title="إعادة (Ctrl+Y)">↷ إعادة</button>
-  <button class="tbtn" id="btnNew">جديد</button>
-  <button class="tbtn" id="btnSave">حفظ JSON</button>
-  <button class="tbtn" id="btnLoad">تحميل JSON</button>
-  <button class="tbtn primary" id="btnExport">⬇ تصدير PNG</button>
-  <input type="file" id="fileLoad" accept=".json" style="display:none">
-</div>
+  <div class="spacer" aria-hidden="true"></div>
+  <button type="button" class="tbtn" id="btnUndo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
+  <button type="button" class="tbtn" id="btnRedo" title="إعادة (Ctrl+Y)">↷ إعادة</button>
+  <button type="button" class="tbtn" id="btnNew">جديد</button>
+  <button type="button" class="tbtn" id="btnSave">حفظ JSON</button>
+  <button type="button" class="tbtn" id="btnLoad">تحميل JSON</button>
+  <button type="button" class="tbtn primary" id="btnExport">⬇ تصدير PNG</button>
+  <input type="file" id="fileLoad" accept=".json" style="display:none" aria-hidden="true" tabindex="-1">
+</header>
 
 <div class="app">
-  <aside class="sidebar" id="sidebar"></aside>
+  <aside class="sidebar" id="sidebar" aria-label="لوحة التحكم"></aside>
 
-  <main class="preview-wrap">
+  <main class="preview-wrap" id="main-content" aria-label="معاينة البوستر">
     <div class="pv-ctrl">
-      <span class="zl">تكبير</span>
+      <label for="zoom" class="zl">تكبير</label>
       <input type="range" id="zoom" min="25" max="100" value="55">
-      <span class="zl" id="zoomVal">55%</span>
-      <div style="flex:1"></div>
+      <span class="zl" id="zoomVal" aria-live="polite" aria-atomic="true">55%</span>
+      <div style="flex:1" aria-hidden="true"></div>
       <span class="zl" id="dimInfo">900px</span>
     </div>
     <div class="poster-stage" id="stage"></div>
   </main>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script src="app.js"></script>
 </body>
