@@ -236,11 +236,25 @@ function posterVars(s){
   return { cssVars, bgVars, userWrapStyle, userWrapClass, techStyle, fontScaleVars, ul, tl };
 }
 
+// Resolve a card's effective span: 'auto' → 'half' for tip/no-code cards, 'full' otherwise
+function resolveSpan(c){
+  if(c.span==='full' || c.span==='half') return c.span;
+  const ctype = c.type || 'code';
+  if(ctype === 'tip') return 'half';
+  if(c.code===undefined || c.code===null || c.code==='') return 'half';
+  return 'full';
+}
+
 function buildCardHTML(c, i){
   const ctype = c.type || 'code';
+  const span = resolveSpan(c);
+  const compact = c.compact ? ' card-compact' : '';
+  const collapsed = c.collapsed ? ' card-collapsed' : '';
+  const spanCls = span==='half' ? ' card-half' : '';
+  const cls = `card${ctype==='tip'?' type-tip':''}${spanCls}${compact}${collapsed}`;
   if(ctype === 'tip'){
     return `
-    <div class="card type-tip" data-i="${i}">
+    <div class="${cls}" data-i="${i}">
       <div class="tip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.3 1 2.5h6c0-1.2.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></div>
       <h2>${esc(c.title)}</h2>
       <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
@@ -252,7 +266,7 @@ function buildCardHTML(c, i){
     </div>`;
   }
   return `
-    <div class="card" data-i="${i}">
+    <div class="${cls}" data-i="${i}">
       <div class="number">${esc(c.number)}</div>
       <h2>${esc(c.title)}</h2>
       <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
@@ -263,6 +277,7 @@ function buildCardHTML(c, i){
           <span>${esc(c.codeLang||'CODE')}</span>
         </div>
         <pre>${c.rawCode ? c.code : highlightCode(c.code, (c.codeLang||'').toLowerCase())}</pre>
+        ${c.collapsed ? '<div class="code-fade" aria-hidden="true"></div>' : ''}
       </div>`:''}
       ${(c.noteTitle||c.noteText) ? `
       <div class="note ar">
@@ -270,6 +285,28 @@ function buildCardHTML(c, i){
         ${esc(c.noteText||'').replace(/\n/g,'<br>')}
       </div>`:''}
     </div>`;
+}
+
+// Group cards into rows: 'full' = solo row, 'half' = pair up two per row
+function groupCardsIntoRows(cards){
+  const rows = [];
+  let pending = null;
+  cards.forEach((c, i) => {
+    const span = resolveSpan(c);
+    if(span === 'full'){
+      if(pending){ rows.push([pending]); pending = null; }
+      rows.push([i]);
+    } else { // half
+      if(pending !== null){
+        rows.push([pending, i]);
+        pending = null;
+      } else {
+        pending = i;
+      }
+    }
+  });
+  if(pending !== null) rows.push([pending]);
+  return rows;
 }
 
 function buildHeaderHTML(s){
@@ -312,46 +349,55 @@ function buildPosterElement(s, opts){
   </section>`;
 }
 
-// Measure card heights by rendering a hidden poster
+// Measure row heights by rendering a hidden poster
 function measureLayout(){
   const s = state;
   const v = posterVars(s);
+  const rows = groupCardsIntoRows(s.cards);
   const stage = document.createElement('div');
   stage.className = 'poster-export-stage';
   stage.style.cssText += 'visibility:hidden;';
   const poster = document.createElement('section');
   poster.className = 'poster ' + (s.theme||'');
   poster.style.cssText = `--poster-width:${POSTER_WIDTH}px;--poster-min-height:0;${v.fontScaleVars}${v.cssVars};${v.bgVars}`;
+  const cardsHTML = rows.map(row => {
+    if(row.length === 1) return buildCardHTML(s.cards[row[0]], row[0]);
+    return `<div class="card-row">${row.map(i=>buildCardHTML(s.cards[i], i)).join('')}</div>`;
+  }).join('');
   poster.innerHTML =
     `<div class="curve"></div>
     <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
     <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">
-    ${buildHeaderHTML(s)}` + s.cards.map((c,i)=>buildCardHTML(c,i)).join('');
+    ${buildHeaderHTML(s)}` + cardsHTML;
   stage.appendChild(poster);
   document.body.appendChild(stage);
 
-  const introEl = poster.querySelector('.intro');
-  const headerEndY = introEl ? (introEl.offsetTop + introEl.offsetHeight) : 200;
-  const cardEls = Array.from(poster.querySelectorAll('.card'));
-  const cardMetrics = cardEls.map(c => ({ top: c.offsetTop, height: c.offsetHeight }));
+  // Measure each row (either a .card-row or a standalone .card)
+  const rowEls = Array.from(poster.children).filter(el =>
+    el.classList && (el.classList.contains('card-row') || el.classList.contains('card'))
+  );
+  const rowMetrics = rows.map((row, idx) => {
+    const el = rowEls[idx];
+    return { row, top: el ? el.offsetTop : 0, height: el ? el.offsetHeight : 0 };
+  });
   stage.remove();
-  return { headerEndY, cardMetrics };
+  return { rowMetrics };
 }
 
-// Greedy pagination: distribute cards across fixed-height pages
-function paginateCards(cardMetrics, pageHeight){
+// Greedy pagination: distribute rows across fixed-height pages
+function paginateRows(rowMetrics, pageHeight){
   const limit = pageHeight - PAGE_BOTTOM_PAD;
   const pages = [];
-  let page = { type:'full', cardIndices:[] };
-  let y = 0; // will be set to headerEndY for first page
+  let page = { type:'full', rows:[] };
+  let y = 0;
 
-  for(let i=0; i<cardMetrics.length; i++){
-    const isFirstOnPage = page.cardIndices.length === 0;
-    let gap, cardH = cardMetrics[i].height;
+  for(let i=0; i<rowMetrics.length; i++){
+    const isFirstOnPage = page.rows.length === 0;
+    let gap, rowH = rowMetrics[i].height;
 
     if(page.type === 'full' && isFirstOnPage){
-      y = cardMetrics[0] ? (cardMetrics[0].top) : 0; // first card top includes header
-      gap = 0; // already accounted for in y
+      y = rowMetrics[0] ? rowMetrics[0].top : 0;
+      gap = 0;
     } else if(page.type === 'mini' && isFirstOnPage){
       y = PAGE_TOP_PAD + MINI_HEADER_HEIGHT;
       gap = CARD_GAP;
@@ -359,22 +405,20 @@ function paginateCards(cardMetrics, pageHeight){
       gap = CARD_GAP;
     }
 
-    const cardBottom = y + gap + cardH;
-    if(cardBottom > limit && !isFirstOnPage){
-      // start new page
+    const rowBottom = y + gap + rowH;
+    if(rowBottom > limit && !isFirstOnPage){
       pages.push(page);
-      page = { type:'mini', cardIndices:[] };
+      page = { type:'mini', rows:[] };
       y = PAGE_TOP_PAD + MINI_HEADER_HEIGHT;
       gap = CARD_GAP;
-      // re-place this card on new page
-      page.cardIndices.push(i);
-      y = y + gap + cardH;
+      page.rows.push(rowMetrics[i].row);
+      y = y + gap + rowH;
     } else {
-      page.cardIndices.push(i);
-      y = cardBottom;
+      page.rows.push(rowMetrics[i].row);
+      y = rowBottom;
     }
   }
-  if(page.cardIndices.length > 0) pages.push(page);
+  if(page.rows.length > 0) pages.push(page);
   return pages;
 }
 
@@ -385,9 +429,14 @@ function renderPoster(){
 
   if(!ps.h){
     // Auto: single poster, min-height, grows with content
+    const rows = groupCardsIntoRows(s.cards);
+    const cardsHTML = rows.map(row => {
+      if(row.length === 1) return buildCardHTML(s.cards[row[0]], row[0]);
+      return `<div class="card-row">${row.map(i=>buildCardHTML(s.cards[i], i)).join('')}</div>`;
+    }).join('');
     stage.innerHTML = buildPosterElement(s, {
       header: buildHeaderHTML(s),
-      cardsHTML: s.cards.map((c,i)=>buildCardHTML(c,i)).join(''),
+      cardsHTML,
       footer: true
     });
     updateDimInfo(ps, 1);
@@ -395,8 +444,8 @@ function renderPoster(){
   }
 
   // Fixed size: measure, paginate, render multiple pages
-  const { headerEndY, cardMetrics } = measureLayout();
-  if(!cardMetrics.length){
+  const { headerEndY, rowMetrics } = measureLayout();
+  if(!rowMetrics.length){
     stage.innerHTML = buildPosterElement(s, {
       header: buildHeaderHTML(s),
       cardsHTML: '',
@@ -407,7 +456,7 @@ function renderPoster(){
     return;
   }
 
-  const pages = paginateCards(cardMetrics, ps.h);
+  const pages = paginateRows(rowMetrics, ps.h);
   const totalPages = pages.length;
   let html = '';
   pages.forEach((pg, idx) => {
@@ -416,7 +465,10 @@ function renderPoster(){
     const header = pg.type === 'full'
       ? buildHeaderHTML(s)
       : buildMiniHeaderHTML(s, pageNum, totalPages);
-    const cardsHTML = pg.cardIndices.map(i => buildCardHTML(s.cards[i], i)).join('');
+    const cardsHTML = pg.rows.map(row => {
+      if(row.length === 1) return buildCardHTML(s.cards[row[0]], row[0]);
+      return `<div class="card-row">${row.map(i=>buildCardHTML(s.cards[i], i)).join('')}</div>`;
+    }).join('');
     html += buildPosterElement(s, {
       header,
       cardsHTML,
@@ -522,6 +574,19 @@ function renderSidebar(){
       </div>
       <div class="ci-body">
         <div class="fld"><label>نوع البطاقة</label><select onchange="setCard(${i},'type',this.value);renderSidebar()"><option value="code" ${(c.type||'code')==='code'?'selected':''}>كود</option><option value="tip" ${c.type==='tip'?'selected':''}>نصيحة</option></select></div>
+        <div class="fld"><label>العرض (تخطيط)</label>
+          <div class="btn-group">
+            <button type="button" class="mini-btn ${(c.span||'auto')==='auto'?'active':''}" onclick="setCard(${i},'span','auto');renderSidebar()">تلقائي</button>
+            <button type="button" class="mini-btn ${c.span==='full'?'active':''}" onclick="setCard(${i},'span','full');renderSidebar()">كامل</button>
+            <button type="button" class="mini-btn ${c.span==='half'?'active':''}" onclick="setCard(${i},'span','half');renderSidebar()">نصف</button>
+          </div>
+        </div>
+        <div class="fld"><label>توفير المساحة</label>
+          <div class="btn-group">
+            <button type="button" class="mini-btn ${c.compact?'active':''}" onclick="toggleCardProp(${i},'compact');renderSidebar()">مضغوط</button>
+            <button type="button" class="mini-btn ${c.collapsed?'active':''}" onclick="toggleCardProp(${i},'collapsed');renderSidebar()" ${(c.type||'code')==='code'?'':'disabled'}>طي الكود</button>
+          </div>
+        </div>
         <div class="row">
           <div class="fld"><label>الرقم</label><input type="text" value="${esc(c.number)}" oninput="setCard(${i},'number',this.value)"></div>
           <div class="fld"><label>عنوان البطاقة (EN)</label><input type="text" value="${esc(c.title)}" oninput="setCard(${i},'title',this.value)"></div>
@@ -730,8 +795,10 @@ window.setFontScale = setFontScale;
 window.resetFontScales = resetFontScales;
 function setField(k,v){ state[k]=v; scheduleRender(); }
 function setCard(i,k,v){ state.cards[i][k]=v; scheduleRender(); if(k==='number'||k==='title') refreshCardHeader(i); }
+function toggleCardProp(i,k){ state.cards[i][k]=!state.cards[i][k]; scheduleRender(); }
+window.toggleCardProp = toggleCardProp;
 function refreshCardHeader(i){ const ci=document.getElementById('ci-'+i); if(!ci)return; ci.querySelector('.num').textContent=state.cards[i].number||'?'; ci.querySelector('.tt').textContent=state.cards[i].title||'بدون عنوان'; }
-function addCard(){ pushHistory(); state.cards.push({number:String(state.cards.length+1).padStart(2,'0'),title:'New Card',type:'code',ar:'',codeLang:'JSX',code:'',rawCode:false,noteTitle:'',noteText:''}); renderAll(); }
+function addCard(){ pushHistory(); state.cards.push({number:String(state.cards.length+1).padStart(2,'0'),title:'New Card',type:'code',ar:'',codeLang:'JSX',code:'',rawCode:false,noteTitle:'',noteText:'',span:'auto',compact:false,collapsed:false}); renderAll(); }
 function delCard(i){ pushHistory(); state.cards.splice(i,1); renderAll(); }
 function moveCard(i,dir){ const j=i+dir; if(j<0||j>=state.cards.length)return; pushHistory(); const a=state.cards; [a[i],a[j]]=[a[j],a[i]]; renderAll(); }
 function toggleCard(i){ const ci=document.getElementById('ci-'+i); if(ci) ci.classList.toggle('collapsed'); }
@@ -820,7 +887,12 @@ function applyLoadedState(loaded){
   state.logoHighlight=Object.assign({enabled:true,color:'#61dafb',blur:25,opacity:0.35,x:0,y:0}, loaded.logoHighlight||{});
   state.bgHighlight=Object.assign({enabled:true,color:'#61dafb',opacity:0.38,x:85,y:0,size:30}, loaded.bgHighlight||{});
   // backfill card.type for old projects
-  (state.cards||[]).forEach(c=>{ if(!c.type) c.type='code'; });
+  (state.cards||[]).forEach(c=>{
+    if(!c.type) c.type='code';
+    if(!c.span) c.span='auto';
+    if(c.compact==null) c.compact=false;
+    if(c.collapsed==null) c.collapsed=false;
+  });
   // backfill page size + font scale for old projects
   if(!state.pageSize) state.pageSize='auto';
   if(!state.fontScales) state.fontScales=defaultFontScales();
@@ -900,6 +972,9 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
 - \`code\`: الكود (استخدم \\n للأسطر). التلوين تلقائي.
 - \`rawCode\`: \`true\` فقط إذا أردت كتابة HTML ملوّن يدويًا بـ \`<span>\` — اتركها \`false\` عادةً.
 - \`noteTitle\` / \`noteText\`: ملاحظة عربية اختيارية أسفل البطاقة.
+- \`span\`: عرض البطاقة — \`"auto"\` (تلقائي: نصيحة/بدون كود → نصف، بكود → كامل) \`"full"\` (كامل العرض) \`"half"\` (نصف العرض، بطاقتان نصفيتان تُعرضان بجانب بعضهما لتوفير المساحة).
+- \`compact\`: \`true\` لتصغير الحشو والهوامش وتوفير مساحة رأسية.
+- \`collapsed\`: \`true\` لطي الكود (يظهر أول ~3 أسطر فقط مع تدرّج) — مفيد للكود الطويل.
 
 ## قواعد التصميم
 
