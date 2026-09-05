@@ -538,8 +538,10 @@ function setLogoHighlight(k,v){
   else if(k==='opacity') state.logoHighlight.opacity = +v;
   else if(k==='color'){
     let c = (v||'').trim().toLowerCase();
-    if(/^([a-f\d]{3})$/i.test(c)) c='#'+c;
-    else if(/^([a-f\d]{6})$/i.test(c)) c='#'+c;
+    const short = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(c);
+    const full = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
+    if(short) c='#'+short[1]+short[1]+short[2]+short[2]+short[3]+short[3];
+    else if(full) c='#'+full[1]+full[2]+full[3];
     state.logoHighlight.color = c;
   }
   else state.logoHighlight[k] = v;
@@ -558,8 +560,10 @@ function setBgHighlight(k,v){
   if(k==='enabled') state.bgHighlight.enabled = !!v;
   else if(k==='color'){
     let c = (v||'').trim().toLowerCase();
-    if(/^([a-f\d]{3})$/i.test(c)) c='#'+c;
-    else if(/^([a-f\d]{6})$/i.test(c)) c='#'+c;
+    const short = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(c);
+    const full = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
+    if(short) c='#'+short[1]+short[1]+short[2]+short[2]+short[3]+short[3];
+    else if(full) c='#'+full[1]+full[2]+full[3];
     state.bgHighlight.color = c;
   }
   else state.bgHighlight[k] = +v;
