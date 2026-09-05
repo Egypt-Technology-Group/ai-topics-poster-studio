@@ -78,6 +78,7 @@ function defaultState(){
     techLogo: TECH_LOGOS.react,
     userLogoPos:{ pos:"auto-tl", size:210, dx:0, dy:0 },
     techLogoPos:{ pos:"tr", size:230, dx:45, dy:50 },
+    logoHighlight:{ enabled:true, color:"#61dafb", blur:25, opacity:0.35, x:0, y:0 },
     footer:"@egyitech",
     cards:[
       { number:"01", title:"Functional Updates", ar:"استخدم التحديث الدالي لمنع التضارب عند عدة تحديثات متتالية للحالة.",
@@ -120,6 +121,12 @@ function redo(){
 // ---------- Utils ----------
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+function hexToRgb(hex){
+  const m = /#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})/i.exec(hex) || /#?([a-f\d])([a-f\d])([a-f\d])/i.exec(hex);
+  if(!m) return null;
+  const f = (i)=> parseInt(m[i].length===1 ? m[i]+m[i] : m[i], 16);
+  return { r:f(1), g:f(2), b:f(3) };
+}
 
 // ---------- Code highlighter ----------
 const KW = {
@@ -218,7 +225,13 @@ function renderPoster(){
     ? `width:${ul.size}px;`
     : cornerStyle(ul)+`width:${ul.size}px;`;
   const userWrapClass = ul.pos==="auto-tl" ? "brand" : "logo-abs";
-  const techStyle = cornerStyle(tl)+`width:${tl.size}px;height:${Math.round(tl.size*190/230)}px;`;
+  const h = s.logoHighlight || { enabled:true, color:'#61dafb', blur:25, opacity:0.35, x:0, y:0 };
+  let techFilter = 'filter:none;';
+  if(h.enabled !== false){
+    const rgb = hexToRgb(h.color) || hexToRgb(s.colors['--red']) || hexToRgb('#61dafb');
+    if(rgb) techFilter = `filter:drop-shadow(${(h.x||0)}px ${(h.y||0)}px ${(h.blur||25)}px rgba(${rgb.r},${rgb.g},${rgb.b},${h.opacity??0.35}));`;
+  }
+  const techStyle = cornerStyle(tl)+`width:${tl.size}px;height:${Math.round(tl.size*190/230)}px;${techFilter}`;
 
   const html = `
   <section class="poster ${esc(s.theme)}" dir="ltr" style="--poster-width:${POSTER_WIDTH}px;--poster-min-height:${POSTER_MIN_HEIGHT}px;${cssVars}">
@@ -361,6 +374,28 @@ function renderSidebar(){
       <div class="fld"><button type="button" class="addbtn" onclick="resetLogoPos('${key}')">إعادة للموضع الافتراضي</button></div>`;
   }
 
+  function highlightControls(){
+    const h = s.logoHighlight || { enabled:true, color:'#61dafb', blur:25, opacity:0.35, x:0, y:0 };
+    return `
+    <div class="fld" style="margin-top:14px;border-top:1px solid var(--ui-line);padding-top:12px">
+      <label class="chk"><input type="checkbox" ${h.enabled!==false?'checked':''} onchange="setLogoHighlight('enabled',this.checked)"> تفعيل الهايلايت خلف الشعار</label>
+    </div>
+    <div class="fld">
+      <label>لون الهايلايت</label>
+      <div class="color-cell hl-color">
+        <input type="color" value="${h.color||'#61dafb'}" oninput="setLogoHighlight('color',this.value)">
+        <span class="lbl">لون الهايلايت</span>
+        <input class="hex" type="text" value="${h.color||'#61dafb'}" oninput="setLogoHighlight('color',this.value)">
+      </div>
+    </div>
+    <div class="fld"><label>انتشار الضبابية (px) — <b>${h.blur||25}</b></label>
+      <input type="range" min="0" max="80" value="${h.blur||25}" oninput="setLogoHighlight('blur',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value">
+    </div>
+    <div class="fld"><label>الشفافية — <b>${Math.round((h.opacity??0.35)*100)}%</b></label>
+      <input type="range" min="0" max="100" value="${Math.round((h.opacity??0.35)*100)}" oninput="setLogoHighlight('opacity',+this.value/100);this.previousElementSibling.querySelector('b').textContent=this.value+'%'">
+    </div>`;
+  }
+
   // Logos
   const logoHTML = `
     <div class="fld"><label>شعار المستخدم</label>
@@ -379,6 +414,7 @@ function renderSidebar(){
       </div>
     </div>
     ${posControls('techLogoPos',false)}
+    ${highlightControls()}
     <div class="fld"><label>أو رابط شعار التقنية (URL)</label><input type="text" value="${esc(s.techLogo)}" oninput="setField('techLogo',this.value)" placeholder="https://..."></div>`;
 
   const footHTML = `<div class="fld"><label>نص الفوتر (المعرّف)</label><input type="text" value="${esc(s.footer)}" oninput="setField('footer',this.value)"></div>`;
@@ -418,6 +454,7 @@ function applyPreset(key){
   state.theme = p.theme;
   state.badge = p.badge;
   state.techLogo = TECH_LOGOS[p.tech];
+  state.logoHighlight = Object.assign({enabled:true,color:p.red,blur:25,opacity:0.35,x:0,y:0}, state.logoHighlight||{}, {enabled:true,color:p.red});
   renderAll();
   toast('تم تطبيق قالب '+p.label);
 }
@@ -451,6 +488,27 @@ function resetLogoPos(key){
   renderAll();
   toast('تم إعادة الموضع الافتراضي');
 }
+function setLogoHighlight(k,v){
+  if(!state.logoHighlight) state.logoHighlight = { enabled:true, color:'#61dafb', blur:25, opacity:0.35, x:0, y:0 };
+  if(k==='enabled') state.logoHighlight.enabled = !!v;
+  else if(k==='blur') state.logoHighlight.blur = +v;
+  else if(k==='opacity') state.logoHighlight.opacity = +v;
+  else if(k==='color'){
+    let c = (v||'').trim().toLowerCase();
+    if(/^([a-f\d]{3})$/i.test(c)) c='#'+c;
+    else if(/^([a-f\d]{6})$/i.test(c)) c='#'+c;
+    state.logoHighlight.color = c;
+  }
+  else state.logoHighlight[k] = v;
+  scheduleRender();
+  // sync color inputs in sidebar without full re-render
+  if(k==='color'){
+    const cell = document.querySelector('.color-cell.hl-color');
+    const c = state.logoHighlight.color;
+    if(cell){ cell.querySelector('input[type=color]').value=c; cell.querySelector('.hex').value=c; }
+  }
+}
+window.setLogoHighlight = setLogoHighlight;
 
 function pickFile(key){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.onchange=()=>{ if(inp.files[0]) readImage(inp.files[0],key); }; inp.click(); }
 function readImage(file,key){
@@ -477,6 +535,7 @@ function loadJSON(file){
     // deep-merge logo positions so old projects keep defaults for missing fields
     state.userLogoPos=Object.assign({pos:"auto-tl",size:210,dx:0,dy:0}, loaded.userLogoPos||{});
     state.techLogoPos=Object.assign({pos:"tr",size:230,dx:45,dy:50}, loaded.techLogoPos||{});
+    state.logoHighlight=Object.assign({enabled:true,color:'#61dafb',blur:25,opacity:0.35,x:0,y:0}, loaded.logoHighlight||{});
     // backfill card.type for old projects
     (state.cards||[]).forEach(c=>{ if(!c.type) c.type='code'; });
     future=[]; renderAll(); toast('تم تحميل المشروع');
