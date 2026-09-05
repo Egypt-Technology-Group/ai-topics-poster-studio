@@ -559,7 +559,7 @@ function renderPoster(){
     html += buildPosterElement(s, {
       header,
       cardsHTML,
-      footer: isLast,
+      footer: true,
       fixedHeight: ps.h
     });
     if(!isLast) html += '<div class="page-sep" aria-hidden="true"></div>';
