@@ -795,7 +795,7 @@ function init(){
   document.getElementById('dimInfo').textContent=POSTER_WIDTH+'px';
 
   const zoom=document.getElementById('zoom'), zv=document.getElementById('zoomVal'), stage=document.getElementById('stage');
-  function applyZoom(){ const z=zoom.value; zv.textContent=z+'%'; stage.style.transform=`scale(${z/100})`; stage.style.transformOrigin='top center'; }
+  function applyZoom(){ const z=zoom.value; zv.textContent=z+'%'; stage.style.zoom=z+'%'; }
   zoom.oninput=applyZoom; applyZoom();
 
   document.addEventListener('keydown',e=>{
