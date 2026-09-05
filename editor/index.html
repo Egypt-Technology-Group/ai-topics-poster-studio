@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Topics — Poster Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;1000&family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+<div class="topbar">
+  <div class="brand"><div class="dot"></div>AI Topics <span style="opacity:.5;font-weight:400">Poster Editor</span></div>
+  <div class="spacer"></div>
+  <button class="tbtn" id="btnUndo" title="تراجع (Ctrl+Z)">↶ تراجع</button>
+  <button class="tbtn" id="btnRedo" title="إعادة (Ctrl+Y)">↷ إعادة</button>
+  <button class="tbtn" id="btnNew">جديد</button>
+  <button class="tbtn" id="btnSave">حفظ JSON</button>
+  <button class="tbtn" id="btnLoad">تحميل JSON</button>
+  <button class="tbtn primary" id="btnExport">⬇ تصدير PNG</button>
+  <input type="file" id="fileLoad" accept=".json" style="display:none">
+</div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <main class="preview-wrap">
+    <div class="pv-ctrl">
+      <span class="zl">تكبير</span>
+      <input type="range" id="zoom" min="25" max="100" value="55">
+      <span class="zl" id="zoomVal">55%</span>
+      <div style="flex:1"></div>
+      <span class="zl" id="dimInfo">900px</span>
+    </div>
+    <div class="poster-stage" id="stage"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
