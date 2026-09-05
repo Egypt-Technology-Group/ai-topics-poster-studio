@@ -238,10 +238,10 @@ input,textarea,select{font-family:inherit}
 .user-logo{display:block;width:100%;height:auto}
 .tech-logo{position:absolute;right:45px;top:50px;width:230px;height:190px;object-fit:contain;z-index:2}
 .title{position:relative;z-index:2;margin-top:72px;text-align:center}
-.badge{display:inline-block;background:linear-gradient(90deg,var(--red,#61dafb),var(--red2,#2a9ec4));padding:15px 52px;border-radius:20px;font-size:calc(40px * var(--fs-badge,1));font-weight:900;letter-spacing:12px}
+.badge{display:inline-block;background:linear-gradient(90deg,var(--red,#61dafb),var(--red2,#2a9ec4));padding:15px 52px;border-radius:20px;font-size:calc(40px * var(--fs-badge,1));font-weight:900;letter-spacing:normal}
 /* badge style variants */
-.badge.badge-pill{border-radius:999px;padding:14px 48px;letter-spacing:10px}
-.badge.badge-bar{border-radius:4px;padding:14px 38px;letter-spacing:14px;background:linear-gradient(90deg,var(--red,#61dafb),var(--red2,#2a9ec4));box-shadow:0 0 24px rgba(97,218,251,.25)}
+.badge.badge-pill{border-radius:999px;padding:14px 48px;letter-spacing:normal}
+.badge.badge-bar{border-radius:4px;padding:14px 38px;letter-spacing:normal;background:linear-gradient(90deg,var(--red,#61dafb),var(--red2,#2a9ec4));box-shadow:0 0 24px rgba(97,218,251,.25)}
 .tips{font-size:calc(115px * var(--fs-tips,1));line-height:.9;font-weight:1000;margin:20px 0 14px;letter-spacing:-5px}
 .tips span{color:var(--red,#61dafb)}
 .subtitle{font-size:calc(27px * var(--fs-subtitle,1));color:#c9ced7;letter-spacing:2px}
@@ -313,7 +313,7 @@ pre{margin:0;padding:28px 25px;font-size:calc(18px * var(--fs-code,1));line-heig
 
 /* ===== MINI HEADER (continuation pages) ===== */
 .mini-header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;margin-top:20px;margin-bottom:10px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.08)}
-.badge.mini{font-size:calc(24px * var(--fs-badge,1));padding:8px 24px;border-radius:12px;letter-spacing:6px}
+.badge.mini{font-size:calc(24px * var(--fs-badge,1));padding:8px 24px;border-radius:12px;letter-spacing:normal}
 .page-indicator{font-size:calc(16px * var(--fs-footer,1));color:var(--muted,#b9bec9);font-weight:700;letter-spacing:1px}
 
 /* ===== PAGE SEPARATOR (preview only) ===== */
