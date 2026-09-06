@@ -1499,6 +1499,93 @@ select {
   margin: 0 0 24px;
   text-align: start;
 }
+
+/* ===== MINIMAL / TEXT CARDS (space-saving) ===== */
+.card.type-minimal,
+.card.type-text,
+.card.type-heading {
+  margin-top: 14px;
+  padding: 7px;
+  background: rgba(10, 14, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  box-shadow: none;
+}
+.card.type-minimal h2,
+.card.type-heading h2 {
+  font-size: calc(22px * var(--fs-cardTitle, 1));
+  margin: 0 0 5px;
+}
+.card.type-minimal p,
+.card.type-text p,
+.card.type-heading p {
+  font-size: calc(15px * var(--fs-cardBody, 1));
+  line-height: 1.45;
+  color: #c7ccd4;
+  margin: 0;
+}
+.card.type-minimal .note,
+.card.type-heading .note {
+  margin-top: 8px;
+  padding: 7px;
+  border-inline-start-width: 3px;
+  border-radius: 3px;
+}
+
+.card.type-minicode {
+  margin-top: 14px;
+  padding: 7px;
+  background: rgba(10, 14, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  box-shadow: none;
+}
+.card.type-minicode h2 {
+  font-size: calc(20px * var(--fs-cardTitle, 1));
+  margin: 0 0 5px;
+}
+.card.type-minicode .code {
+  position: relative;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25) !important;
+  box-shadow: none;
+}
+.card.type-minicode .code-light {
+  background: #f6f8fa !important;
+  border-color: #d0d7de !important;
+}
+.card.type-minicode .code-contrast {
+  background: #000 !important;
+  border-color: #00e5ff !important;
+}
+.card.type-minicode .code pre {
+  padding: 7px;
+  font-size: calc(13px * var(--fs-code, 1));
+  line-height: 1.45;
+}
+.card.type-minicode .code-ln pre {
+  padding-left: 34px;
+}
+.card.type-minicode .code-ln pre > .ln-line:before {
+  width: 22px;
+  margin-left: -28px;
+  margin-right: 6px;
+}
+.card.type-minicode .code-fade {
+  bottom: 0;
+  height: 24px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.9));
+}
+.card.type-minicode .code-light .code-fade {
+  background: linear-gradient(to bottom, transparent, #f6f8fa);
+}
+.card.type-minicode .note {
+  margin-top: 8px;
+  padding: 7px;
+  border-inline-start-width: 3px;
+  border-radius: 3px;
+}
 .ar {
   font-family: var(--poster-font, "Cairo"), "Cairo", Tahoma, Arial, sans-serif;
   direction: rtl;
@@ -1944,6 +2031,41 @@ pre {
 .card-compact .note strong {
   display: block;
   margin-bottom: 4px;
+}
+
+/* ultra-compact minimal / text / heading / minicode variants */
+.card-compact.type-minimal,
+.card-compact.type-text,
+.card-compact.type-heading,
+.card-compact.type-minicode {
+  padding: 4px 5px 5px !important;
+  border-radius: 3px !important;
+}
+.card-compact.type-minimal h2,
+.card-compact.type-heading h2,
+.card-compact.type-minicode h2 {
+  font-size: calc(17px * var(--fs-cardTitle, 1));
+  margin-bottom: 3px;
+}
+.card-compact.type-minimal p,
+.card-compact.type-text p,
+.card-compact.type-heading p {
+  font-size: calc(13px * var(--fs-cardBody, 1));
+  line-height: 1.35;
+}
+.card-compact.type-minicode .code pre {
+  padding: 4px 5px;
+  font-size: calc(11px * var(--fs-code, 1));
+  line-height: 1.35;
+}
+.card-compact.type-minicode .code-ln pre {
+  padding-left: 26px;
+}
+.card-compact.type-minicode .code-ln pre > .ln-line:before {
+  width: 18px;
+  margin-left: -22px;
+  margin-right: 4px;
+  font-size: 0.8em;
 }
 
 /* collapsed code: show only first ~3 lines with fade */

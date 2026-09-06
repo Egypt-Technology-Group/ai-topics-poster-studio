@@ -296,7 +296,7 @@ function posterVars(s){
 function resolveSpan(c){
   if(c.span==='full' || c.span==='half') return c.span;
   const ctype = c.type || 'code';
-  if(ctype === 'tip' || ctype === 'warning' || ctype === 'info') return 'half';
+  if(ctype === 'tip' || ctype === 'warning' || ctype === 'info' || ctype === 'minimal' || ctype === 'minicode' || ctype === 'text' || ctype === 'heading') return 'half';
   if(c.code===undefined || c.code===null || c.code==='') return 'half';
   return 'full';
 }
@@ -307,7 +307,7 @@ function buildCardHTML(c, i){
   const compact = c.compact ? ' card-compact' : '';
   const collapsed = c.collapsed ? ' card-collapsed' : '';
   const spanCls = span==='half' ? ' card-half' : '';
-  const variantCls = (ctype==='tip'||ctype==='warning'||ctype==='info') ? ` type-${ctype}` : '';
+  const variantCls = (ctype==='tip'||ctype==='warning'||ctype==='info'||ctype==='minimal'||ctype==='minicode'||ctype==='text'||ctype==='heading') ? ` type-${ctype}` : '';
   const cls = `card${variantCls}${spanCls}${compact}${collapsed}`;
   const cardDir = ` dir="${textDir(c.title || c.ar)}"`;
   // Per-card custom style overrides (optional)
@@ -335,6 +335,47 @@ function buildCardHTML(c, i){
         ${c.noteTitle?`<strong>${esc(c.noteTitle)}</strong><br>`:''}
         ${esc(c.noteText||'').replace(/\n/g,'<br>')}
       </div>`:''}
+    </div>`;
+  }
+  if(ctype === 'minimal'){
+    return `
+    <div class="${cls}" data-i="${i}"${cardDir}${cardStyle}>
+      <h2 dir="auto">${esc(c.title)}</h2>
+      <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
+      ${(c.noteTitle||c.noteText) ? `
+      <div class="note ar">
+        ${c.noteTitle?`<strong>${esc(c.noteTitle)}</strong><br>`:''}
+        ${esc(c.noteText||'').replace(/\n/g,'<br>')}
+      </div>`:''}
+    </div>`;
+  }
+  if(ctype === 'minicode'){
+    return `
+    <div class="${cls}" data-i="${i}"${cardDir}${cardStyle}>
+      ${c.title ? `<h2 dir="auto">${esc(c.title)}</h2>` : ''}
+      ${c.code!==undefined && c.code!==null && c.code!=='' ? `
+      <div class="code code-${state.codeTheme||'dark'}${state.codeLineNumbers?' code-ln':''}">
+        <pre>${c.rawCode ? c.code : (state.codeLineNumbers ? highlightCodeLines(c.code, (c.codeLang||'').toLowerCase()) : highlightCode(c.code, (c.codeLang||'').toLowerCase()))}</pre>
+        ${c.collapsed ? '<div class="code-fade" aria-hidden="true"></div>' : ''}
+      </div>`:''}
+      ${(c.noteTitle||c.noteText) ? `
+      <div class="note ar">
+        ${c.noteTitle?`<strong>${esc(c.noteTitle)}</strong><br>`:''}
+        ${esc(c.noteText||'').replace(/\n/g,'<br>')}
+      </div>`:''}
+    </div>`;
+  }
+  if(ctype === 'text'){
+    return `
+    <div class="${cls}" data-i="${i}"${cardDir}${cardStyle}>
+      <p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>
+    </div>`;
+  }
+  if(ctype === 'heading'){
+    return `
+    <div class="${cls}" data-i="${i}"${cardDir}${cardStyle}>
+      ${c.title ? `<h2 dir="auto">${esc(c.title)}</h2>` : ''}
+      ${c.ar ? `<p class="ar">${esc(c.ar).replace(/\n/g,'<br>')}</p>` : ''}
     </div>`;
   }
   return `
@@ -884,7 +925,7 @@ function renderSidebar(){
         </div>
       </div>
       <div class="ci-body">
-        <div class="fld"><label>نوع البطاقة</label><select onchange="setCard(${i},'type',this.value);renderSidebar()"><option value="code" ${(c.type||'code')==='code'?'selected':''}>كود</option><option value="tip" ${c.type==='tip'?'selected':''}>نصيحة</option><option value="warning" ${c.type==='warning'?'selected':''}>تحذير</option><option value="info" ${c.type==='info'?'selected':''}>معلومة</option></select></div>
+        <div class="fld"><label>نوع البطاقة</label><select onchange="setCard(${i},'type',this.value);renderSidebar()"><option value="code" ${(c.type||'code')==='code'?'selected':''}>كود</option><option value="tip" ${c.type==='tip'?'selected':''}>نصيحة</option><option value="warning" ${c.type==='warning'?'selected':''}>تحذير</option><option value="info" ${c.type==='info'?'selected':''}>معلومة</option><option value="minimal" ${c.type==='minimal'?'selected':''}>بسيطة</option><option value="minicode" ${c.type==='minicode'?'selected':''}>كود بسيط</option><option value="text" ${c.type==='text'?'selected':''}>نص فقط</option><option value="heading" ${c.type==='heading'?'selected':''}>عنوان + نص</option></select></div>
         <div class="fld"><label>العرض (تخطيط)</label>
           <div class="btn-group">
             <button type="button" class="mini-btn ${(c.span||'auto')==='auto'?'active':''}" onclick="setCard(${i},'span','auto');renderSidebar()">تلقائي</button>
@@ -952,6 +993,10 @@ function renderSidebar(){
     <button type="button" class="tpl-btn" onclick="addCardFromTemplate('warning')">تحذير</button>
     <button type="button" class="tpl-btn" onclick="addCardFromTemplate('info')">معلومة</button>
     <button type="button" class="tpl-btn" onclick="addCardFromTemplate('compare')">مقارنة</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('minimal')">بسيطة</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('minicode')">كود بسيط</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('text')">نص فقط</button>
+    <button type="button" class="tpl-btn" onclick="addCardFromTemplate('heading')">عنوان + نص</button>
   </div>`;
 
   // Logo position controls block
@@ -1233,6 +1278,10 @@ const CARD_TEMPLATES = {
   warning: { number:'01', title:'تحذير', type:'warning', ar:'تنبيه على ممارسة خاطئة أو فخ شائع.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
   info: { number:'01', title:'معلومة', type:'info', ar:'معلومة إضافية أو سياق مهم.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
   compare: { number:'01', title:'Comparison', type:'code', ar:'مقارنة بين نهجين.', codeLang:'JSX', code:'// Approach A\nconst a = ...\n\n// Approach B\nconst b = ...', rawCode:false, noteTitle:'أيهما أفضل؟', noteText:'استخدم A في الحالة X، و B في الحالة Y.', span:'full', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  minimal: { number:'01', title:'New Mini', type:'minimal', ar:'نص مختصر.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  minicode: { number:'01', title:'Mini Code', type:'minicode', ar:'', codeLang:'JSX', code:'// small snippet', rawCode:false, noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  text: { number:'01', title:'', type:'text', ar:'نص مختصر بدون عنوان.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
+  heading: { number:'01', title:'Heading', type:'heading', ar:'شرح مختصر تحت العنوان.', noteTitle:'', noteText:'', span:'auto', compact:false, collapsed:false, bg:'', bgOpacity:'', borderColor:'', borderWidth:'', radius:'' },
 };
 function addCardFromTemplate(key){
   const tpl = CARD_TEMPLATES[key];
@@ -1242,7 +1291,7 @@ function addCardFromTemplate(key){
   copy.number = String(state.cards.length+1).padStart(2,'0');
   state.cards.push(copy);
   renderAll();
-  toast('تمت إضافة بطاقة ' + (key==='code'?'كود':key==='tip'?'نصيحة':key==='warning'?'تحذير':key==='info'?'معلومة':'مقارنة'));
+  toast('تمت إضافة بطاقة ' + (key==='code'?'كود':key==='tip'?'نصيحة':key==='warning'?'تحذير':key==='info'?'معلومة':key==='minimal'?'بسيطة':key==='minicode'?'كود بسيط':key==='text'?'نص فقط':key==='heading'?'عنوان + نص':'مقارنة'));
 }
 window.addCardFromTemplate = addCardFromTemplate;
 function toggleCard(i){ const ci=document.getElementById('ci-'+i); if(ci) ci.classList.toggle('collapsed'); }
