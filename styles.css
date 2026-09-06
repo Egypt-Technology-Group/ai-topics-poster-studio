@@ -1457,8 +1457,7 @@ select {
   letter-spacing: 2px;
 }
 .intro {
-  margin: 42px auto 35px;
-  max-width: 650px;
+  margin: 42px 0 35px;
   font-size: calc(22px * var(--fs-intro, 1));
   line-height: 1.7;
   color: var(--muted, #b9bec9);

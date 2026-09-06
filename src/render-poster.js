@@ -229,14 +229,25 @@ export function buildPosterElement(s, opts){
   </section>`;
 }
 
-// Measure row heights and header end positions by rendering hidden posters
-export function measureLayout(){
+// Measure row heights and header end positions by rendering hidden posters.
+// `vs` = the intended render scale. When vs < 1 the real render wraps content in
+// a .content-fit "virtual poster" wider than 900px, where text wraps differently
+// — so measurement must use the SAME virtual width or heights are overestimated
+// (which wrongly pushes cards to new pages and leaves gaps before the footer).
+export function measureLayout(vs = 1){
   const s = state;
   const v = posterVars(s);
   const rows = groupCardsIntoRows(s.cards);
   const stage = document.createElement('div');
   stage.className = 'poster-export-stage';
   stage.style.cssText += 'visibility:hidden;';
+
+  // Mirror buildPosterElement's scaled wrapper (absolute, same width/padding,
+  // NO transform — offsets are read in virtual units directly)
+  const wrap = (html) => vs < 1
+    ? `<div class="content-fit" style="width:${(100/vs).toFixed(4)}%;padding:${(58/vs).toFixed(2)}px ${(55/vs).toFixed(2)}px ${(110/vs).toFixed(2)}px">${html}</div>`
+    : html;
+  const containerOf = (poster) => vs < 1 ? poster.querySelector('.content-fit') : poster;
 
   // Full-layout measurement: full header + all cards in one long poster
   const poster = document.createElement('section');
@@ -246,16 +257,17 @@ export function measureLayout(){
     if(row.length === 1) return buildCardHTML(s.cards[row[0]], row[0]);
     return `<div class="card-row">${row.map(i=>buildCardHTML(s.cards[i], i)).join('')}</div>`;
   }).join('');
-  poster.innerHTML =
+  poster.innerHTML = wrap(
     `<div class="curve"></div>
     <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
     <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">
-    ${buildHeaderHTML(s)}` + cardsHTML;
+    ${buildHeaderHTML(s)}` + cardsHTML);
   stage.appendChild(poster);
   document.body.appendChild(stage);
 
   // Measure each row (either a .card-row or a standalone .card)
-  const rowEls = Array.from(poster.children).filter(el =>
+  const container = containerOf(poster);
+  const rowEls = Array.from(container.children).filter(el =>
     el.classList && (el.classList.contains('card-row') || el.classList.contains('card'))
   );
   const rowMetrics = rows.map((row, idx) => {
@@ -267,14 +279,14 @@ export function measureLayout(){
   const continuationPoster = document.createElement('section');
   continuationPoster.className = 'poster ' + (s.theme||'');
   continuationPoster.style.cssText = `--poster-width:${POSTER_WIDTH}px;--poster-min-height:0;${v.fontScaleVars}${v.fontVar}${v.cssVars};${v.bgVars}`;
-  continuationPoster.innerHTML =
+  continuationPoster.innerHTML = wrap(
     `<div class="curve"></div>
     <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
     <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">
-    ${buildHeaderHTML(s, false)}<div class="card" style="height:1px"></div>`;
+    ${buildHeaderHTML(s, false)}<div class="card" style="height:1px"></div>`);
   stage.appendChild(continuationPoster);
-  const dummyCard = continuationPoster.querySelector('.card');
-  const continuationHeaderEndY = dummyCard ? dummyCard.offsetTop : (PAGE_TOP_PAD + 120);
+  const dummyCard = containerOf(continuationPoster).querySelector('.card');
+  const continuationHeaderEndY = dummyCard ? dummyCard.offsetTop : ((PAGE_TOP_PAD/vs) + 120);
 
   stage.remove();
   const headerEndY = rowMetrics[0] ? rowMetrics[0].top : 0;
@@ -282,11 +294,15 @@ export function measureLayout(){
 }
 
 // Greedy pagination with scale-to-fit: distribute rows across fixed-height pages.
-// The ENTIRE content (header + cards) is scaled uniformly per page so everything
-// stays proportional. Only when the scale would drop below MIN_CARD_SCALE does a
-// row move to a new page.
-export function paginateRows(rowMetrics, pageHeight, headerEndY, continuationHeaderEndY){
+// Each page computes a candidate scale; renderPoster() then applies the smallest
+// one to ALL pages so typography/spacing stay visually consistent.
+// Only when the scale would drop below MIN_CARD_SCALE does a row move to a new page.
+// `vs` = intended render scale. rowMetrics/headerEndY are measured in VIRTUAL
+// units at virtual width (790/vs content px), so the virtual top padding is
+// PAGE_TOP_PAD/vs. page.scale = required render scale = availableH / virtualH.
+export function paginateRows(rowMetrics, pageHeight, headerEndY, continuationHeaderEndY, vs = 1){
   const availableH = pageHeight - PAGE_TOP_PAD - PAGE_BOTTOM_PAD;
+  const topPadV = PAGE_TOP_PAD / vs;
   const pages = [];
   let page = { type:'full', rows:[], scale:1 };
   let headerH = 0;           // header height inside the content wrapper
@@ -298,8 +314,8 @@ export function paginateRows(rowMetrics, pageHeight, headerEndY, continuationHea
 
     if(isFirstOnPage){
       headerH = page.type === 'full'
-        ? (headerEndY - PAGE_TOP_PAD)
-        : (continuationHeaderEndY - PAGE_TOP_PAD);
+        ? (headerEndY - topPadV)
+        : (continuationHeaderEndY - topPadV);
       cardsNaturalH = 0;
     }
 
@@ -357,8 +373,14 @@ export function renderPoster(){
     return;
   }
 
-  // Fixed size: measure, paginate, render multiple pages
-  const { rowMetrics, headerEndY, continuationHeaderEndY } = measureLayout();
+  // Fixed size: measure, paginate, render multiple pages.
+  // Iterate measure→paginate: at scale <1 the virtual canvas is wider so text
+  // wraps differently — re-measure at the computed scale until it converges,
+  // otherwise heights are overestimated (cards pushed to new pages + empty
+  // gaps before the footer). All pages share ONE uniform scale for a
+  // consistent look.
+  let vs = 1;
+  let { rowMetrics, headerEndY, continuationHeaderEndY } = measureLayout(vs);
   if(!rowMetrics.length){
     stage.innerHTML = buildPosterElement(s, {
       header: buildHeaderHTML(s),
@@ -372,8 +394,23 @@ export function renderPoster(){
     return;
   }
 
-  const pages = paginateRows(rowMetrics, ps.h, headerEndY, continuationHeaderEndY);
+  let pages, globalScale = 1;
+  for(let i = 0; i < 8; i++){
+    pages = paginateRows(rowMetrics, ps.h, headerEndY, continuationHeaderEndY, vs);
+    globalScale = Math.min(...pages.map(p => p.scale), 1);
+    if(globalScale >= vs - 0.005) { globalScale = Math.min(globalScale, vs); break; }
+    vs = globalScale;
+    ({ rowMetrics, headerEndY, continuationHeaderEndY } = measureLayout(vs));
+  }
+  // If the loop hit its cap still needing a smaller scale, measure once at that scale
+  if(globalScale < vs - 0.005){
+    vs = globalScale;
+    ({ rowMetrics, headerEndY, continuationHeaderEndY } = measureLayout(vs));
+    pages = paginateRows(rowMetrics, ps.h, headerEndY, continuationHeaderEndY, vs);
+    globalScale = Math.min(...pages.map(p => p.scale), vs);
+  }
   const totalPages = pages.length;
+  pages.forEach(p => { p.scale = globalScale; });
   let html = '';
   pages.forEach((pg, idx) => {
     const pageNum = idx + 1;
