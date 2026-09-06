@@ -1822,10 +1822,10 @@ pre {
   height: 100%;
 }
 .card.type-tip h2 {
-  margin-inline-start: 56px;
+  margin-inline-start: 86px;
 }
 .card.type-tip p {
-  margin-inline-start: 56px;
+  margin-inline-start: 86px;
 }
 
 /* ===== WARNING CARD ===== */
@@ -1854,10 +1854,10 @@ pre {
   height: 100%;
 }
 .card.type-warning h2 {
-  margin-inline-start: 56px;
+  margin-inline-start: 86px;
 }
 .card.type-warning p {
-  margin-inline-start: 56px;
+  margin-inline-start: 86px;
 }
 .card.type-warning .note {
   border-inline-start-color: #ffb43c;
@@ -1893,10 +1893,10 @@ pre {
   height: 100%;
 }
 .card.type-info h2 {
-  margin-inline-start: 56px;
+  margin-inline-start: 86px;
 }
 .card.type-info p {
-  margin-inline-start: 56px;
+  margin-inline-start: 86px;
 }
 .card.type-info .note {
   border-inline-start-color: #5b8cff;
@@ -1918,7 +1918,7 @@ pre {
 .card-compact.type-warning p,
 .card-compact.type-info h2,
 .card-compact.type-info p {
-  margin-inline-start: 40px;
+  margin-inline-start: 58px;
 }
 
 /* ===== MINI HEADER (continuation pages) ===== */
@@ -2009,7 +2009,7 @@ pre {
 }
 .card-compact.type-tip h2,
 .card-compact.type-tip p {
-  margin-inline-start: 40px;
+  margin-inline-start: 58px;
 }
 .card-compact .code-head {
   height: 32px;

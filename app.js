@@ -274,7 +274,7 @@ function posterVars(s){
   const ul = s.userLogoPos || {pos:"auto-tl",size:210,dx:0,dy:0};
   const tl = s.techLogoPos || {pos:"tr",size:230,dx:45,dy:50};
   const userWrapStyle = ul.pos==="auto-tl"
-    ? `width:${ul.size}px;`
+    ? `width:${ul.size}px;transform:translate(${ul.dx||0}px,${ul.dy||0}px);`
     : cornerStyle(ul)+`width:${ul.size}px;`;
   const userWrapClass = ul.pos==="auto-tl" ? "brand" : "logo-abs";
   const h = s.logoHighlight || { enabled:true, color:'#61dafb', blur:25, opacity:0.35, x:0, y:0 };
