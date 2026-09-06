@@ -1466,6 +1466,12 @@ select {
   padding-inline-start: 24px;
   text-align: start;
 }
+/* Scale-to-fit wrapper for paginated pages (scales header + cards together) */
+.content-fit {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;            /* prevent margin-collapse so margin-top is included in scale */
+}
 .card {
   position: relative;
   z-index: 2;

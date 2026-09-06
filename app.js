@@ -55,6 +55,7 @@ const PAGE_SIZES = {
 const PAGE_TOP_PAD = 58;
 const PAGE_BOTTOM_PAD = 110;
 const CARD_GAP = 35;           // .card margin-top
+const MIN_CARD_SCALE = 0.45;   // minimum scale for cards on a page (below this → new page)
 
 // Tech logo URLs (devicon CDN)
 const TECH_LOGOS = {
@@ -464,10 +465,15 @@ function buildPosterElement(s, opts){
     <div class="curve"></div>
     <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
     <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">`;
+  const cardScale = opts.cardScale != null ? opts.cardScale : 1;
+  const headerHTML = opts.header || '';
+  const cardsHTML = opts.cardsHTML || '';
+  const contentMarkup = cardScale < 1
+    ? `<div class="content-fit" style="transform:scale(${cardScale.toFixed(4)});transform-origin:top left;width:${(100/cardScale).toFixed(4)}%">${headerHTML}${cardsHTML}</div>`
+    : `${headerHTML}${cardsHTML}`;
   return `<section class="poster ${esc(s.theme)}" dir="ltr" style='--poster-width:${POSTER_WIDTH}px;${minHeightVar}${heightStyle}${fontScaleVar}${fontVar}${v.cssVars};${v.bgVars}'>
     ${logos}
-    ${opts.header || ''}
-    ${opts.cardsHTML || ''}
+    ${contentMarkup}
     ${opts.footer ? buildFooterHTML(s, opts.pageNum||0, opts.totalPages||0) : ''}
   </section>`;
 }
@@ -524,33 +530,53 @@ function measureLayout(){
   return { rowMetrics, headerEndY, continuationHeaderEndY };
 }
 
-// Greedy pagination: distribute rows across fixed-height pages
+// Greedy pagination with scale-to-fit: distribute rows across fixed-height pages.
+// The ENTIRE content (header + cards) is scaled uniformly per page so everything
+// stays proportional. Only when the scale would drop below MIN_CARD_SCALE does a
+// row move to a new page.
 function paginateRows(rowMetrics, pageHeight, headerEndY, continuationHeaderEndY){
-  const limit = pageHeight - PAGE_BOTTOM_PAD;
+  const availableH = pageHeight - PAGE_TOP_PAD - PAGE_BOTTOM_PAD;
   const pages = [];
-  let page = { type:'full', rows:[] };
-  let y = 0;
+  let page = { type:'full', rows:[], scale:1 };
+  let headerH = 0;           // header height inside the content wrapper
+  let cardsNaturalH = 0;     // cumulative natural height of cards (+gaps)
 
   for(let i=0; i<rowMetrics.length; i++){
     const isFirstOnPage = page.rows.length === 0;
     const rowH = rowMetrics[i].height;
 
     if(isFirstOnPage){
-      y = page.type === 'full' ? headerEndY : continuationHeaderEndY;
+      headerH = page.type === 'full'
+        ? (headerEndY - PAGE_TOP_PAD)
+        : (continuationHeaderEndY - PAGE_TOP_PAD);
+      cardsNaturalH = 0;
     }
 
     const gap = isFirstOnPage ? 0 : CARD_GAP;
-    const rowBottom = y + gap + rowH;
+    const newCardsH = cardsNaturalH + gap + rowH;
+    const newTotalH = headerH + newCardsH;
+    const scaleWithNew = newTotalH > 0 ? availableH / newTotalH : 1;
 
-    if(rowBottom > limit && !isFirstOnPage){
-      pages.push(page);
-      page = { type:'mini', rows:[] };
-      y = continuationHeaderEndY;
+    if(isFirstOnPage){
+      // Always include the first row, even if scaling is needed
       page.rows.push(rowMetrics[i].row);
-      y = y + rowH;
+      cardsNaturalH = newCardsH;
+      page.scale = Math.min(1, scaleWithNew);
+    } else if(scaleWithNew >= MIN_CARD_SCALE){
+      // Adding this row with uniform scaling is acceptable
+      page.rows.push(rowMetrics[i].row);
+      cardsNaturalH = newCardsH;
+      page.scale = scaleWithNew;
     } else {
+      // Scaling would be too aggressive — start a new page with this row
+      pages.push(page);
+      page = { type:'mini', rows:[], scale:1 };
+      headerH = continuationHeaderEndY - PAGE_TOP_PAD;
+      const singleTotalH = headerH + rowH;
+      const singleScale = singleTotalH > 0 ? availableH / singleTotalH : 1;
       page.rows.push(rowMetrics[i].row);
-      y = rowBottom;
+      page.scale = Math.min(1, singleScale);
+      cardsNaturalH = rowH;
     }
   }
   if(page.rows.length > 0) pages.push(page);
@@ -612,7 +638,8 @@ function renderPoster(){
       footer: true,
       fixedHeight: ps.h,
       pageNum,
-      totalPages
+      totalPages,
+      cardScale: pg.scale
     });
     if(!isLast) html += '<div class="page-sep" aria-hidden="true"></div>';
   });

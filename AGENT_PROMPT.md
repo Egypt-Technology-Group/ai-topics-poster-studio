@@ -60,7 +60,7 @@
 | الحقل | الوصف |
 |-------|--------|
 | `lang` | قالب التقنية: `laravel` `vue` `react` `js` `css` `php` `tailwind` `bootstrap` `flutter` — يضبط الثيم واللونين الأساسيين (`--red`/`--red2`) والشارة وشعار التقنية تلقائيًا. أي حقل تكتبه صراحةً في JSON يتغلب على قيمة القالب |
-| `pageSize` | أبعاد الصورة: `auto` (يتمدد) `sq1` (900×900) `portrait45` (900×1125) `tall23` (900×1350) `story916` (900×1600). عند اختيار بُعد ثابت، المحتوى الزائد يُقسَّم تلقائيًا على صفحات متعددة |
+| `pageSize` | أبعاد الصورة: `auto` (يتمدد) `sq1` (900×900) `portrait45` (900×1125) `tall23` (900×1350) `story916` (900×1600). عند اختيار بُعد ثابت، يتم تصغير المحتوى (scale-to-fit) ليتناسب مع الصفحة بدل اقتصاصه، والزيادة الزائدة تُرحّل تلقائيًا إلى صفحات جديدة |
 | `fontScales` | تحكم منفصل بحجم كل عنصر نصي (من `0.5` إلى `1.6`): `badge` `tips` `subtitle` `intro` `number` `cardTitle` `cardBody` `code` `noteTitle` `noteText` `footer`. خط أصغر = مساحة أكبر للبطاقات = صفحات أقل |
 | `theme` | الثيم البصري: `theme-laravel` `theme-react` `theme-vue` `theme-js` `theme-css` `theme-php` `theme-tailwind` `theme-bootstrap` `theme-flutter` `theme-dots` `theme-curves` `theme-gradient` `theme-glow` `theme-particles` `theme-hexagon` `theme-mesh` `theme-aurora` `theme-waves` `theme-minimal` `theme-grid` |
 | `badge` | شارة صغيرة أعلى البوستر (بالإنجليزية، أحرف كبيرة) |
