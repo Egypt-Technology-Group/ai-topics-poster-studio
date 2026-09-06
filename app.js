@@ -43,11 +43,12 @@ let exportScale = 3;
 
 // Fixed page sizes (width is always POSTER_WIDTH; height varies by aspect ratio)
 const PAGE_SIZES = {
-  auto:       { id:'auto',       label:'تلقائي (يتمدد)',            h:null  },
-  sq1:        { id:'sq1',        label:'مربع 1:1 (900×900)',         h:900   },
-  portrait45: { id:'portrait45', label:'بورتريه 4:5 (900×1125)',     h:1125  },
-  tall23:     { id:'tall23',     label:'طويل 2:3 (900×1350)',        h:1350  },
-  story916:   { id:'story916',   label:'ستوري 9:16 (900×1600)',      h:1600  },
+  auto:       { id:'auto',       label:'تلقائي (يتمدد)',                    h:null  },
+  sq1:        { id:'sq1',        label:'مربع 1:1 (900×900)',                 h:900   },
+  portrait45: { id:'portrait45', label:'بورتريه 4:5 (900×1125)',             h:1125  },
+  tall23:     { id:'tall23',     label:'طويل 2:3 (900×1350)',                h:1350  },
+  story916:   { id:'story916',   label:'ستوري 9:16 (900×1600)',              h:1600  },
+  ig:         { id:'ig',         label:'Instagram feed 4:5 (900×1125)',        h:1125  },
 };
 
 // Layout constants for pagination (must match CSS)
@@ -432,7 +433,7 @@ function buildHeaderHTML(s, includeIntro = true){
   const align = s.titleAlign || 'center';
   const badgeStyle = s.badgeStyle || 'rect';
   const weight = s.titleWeight != null ? s.titleWeight : 1000;
-  const spacing = s.titleSpacing != null ? s.titleSpacing : -5;
+  const spacing = Math.max(0, s.titleSpacing != null ? s.titleSpacing : 0);
   const titleStyle = `text-align:${align};`;
   const tipsStyle = `font-weight:${weight};letter-spacing:${spacing}px;`;
   return `
@@ -913,8 +914,8 @@ function renderSidebar(){
     <div class="fld"><label>وزن خط العنوان — <b>${s.titleWeight!=null?s.titleWeight:1000}</b></label>
       <input type="range" min="400" max="1000" step="100" value="${s.titleWeight!=null?s.titleWeight:1000}" oninput="setField('titleWeight',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value">
     </div>
-    <div class="fld"><label>تباعد أحرف العنوان — <b>${s.titleSpacing!=null?s.titleSpacing:0}px</b></label>
-      <input type="range" min="-10" max="20" value="${s.titleSpacing!=null?s.titleSpacing:0}" oninput="setField('titleSpacing',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
+    <div class="fld"><label>تباعد أحرف العنوان — <b>${Math.max(0,s.titleSpacing!=null?s.titleSpacing:0)}px</b></label>
+      <input type="range" min="0" max="20" value="${Math.max(0,s.titleSpacing!=null?s.titleSpacing:0)}" oninput="setField('titleSpacing',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
     </div>
     <div class="fld"><label>العنوان الفرعي</label><input type="text" value="${esc(s.subtitle)}" oninput="setField('subtitle',this.value)"></div>
     <div class="fld"><label>المقدمة (عربي RTL)</label><textarea oninput="setField('intro',this.value)">${esc(s.intro)}</textarea></div>`;
@@ -1425,6 +1426,7 @@ function applyLoadedState(loaded){
   if(!state.badgeStyle) state.badgeStyle='rect';
   if(state.titleWeight==null) state.titleWeight=1000;
   if(state.titleSpacing==null) state.titleSpacing=0;
+  if(state.titleSpacing < 0) state.titleSpacing = 0;
   // backfill code/footer customization for old projects
   if(!state.codeTheme) state.codeTheme='dark';
   if(state.codeLineNumbers==null) state.codeLineNumbers=false;
@@ -1505,7 +1507,7 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
 | الحقل | الوصف |
 |-------|--------|
 | \`lang\` | قالب التقنية: \`laravel\` \`vue\` \`react\` \`js\` \`css\` \`php\` \`tailwind\` \`bootstrap\` \`flutter\` — يضبط الثيم واللونين الأساسيين (\`--red\`/\`--red2\`) والشارة وشعار التقنية تلقائيًا. أي حقل تكتبه صراحةً في JSON يتغلب على قيمة القالب |
-| \`pageSize\` | أبعاد الصورة: \`auto\` (يتمدد) \`sq1\` (900×900) \`portrait45\` (900×1125) \`tall23\` (900×1350) \`story916\` (900×1600). عند اختيار بُعد ثابت، المحتوى الزائد يُقسَّم تلقائيًا على صفحات متعددة |
+| \`pageSize\` | أبعاد الصورة: \`auto\` (يتمدد) \`sq1\` (900×900) \`portrait45\` (900×1125) \`tall23\` (900×1350) \`story916\` (900×1600) \`ig\` (Instagram feed 4:5). عند اختيار بُعد ثابت، المحتوى الزائد يُقسَّم تلقائيًا على صفحات متعددة |
 | \`fontScales\` | تحكم منفصل بحجم كل عنصر نصي (من \`0.5\` إلى \`1.6\`): \`badge\` \`tips\` \`subtitle\` \`intro\` \`number\` \`cardTitle\` \`cardBody\` \`code\` \`noteTitle\` \`noteText\` \`footer\`. خط أصغر = مساحة أكبر للبطاقات = صفحات أقل |
 | \`theme\` | الثيم البصري: \`theme-laravel\` \`theme-react\` \`theme-vue\` \`theme-js\` \`theme-css\` \`theme-php\` \`theme-tailwind\` \`theme-bootstrap\` \`theme-flutter\` \`theme-dots\` \`theme-curves\` \`theme-gradient\` \`theme-glow\` \`theme-particles\` \`theme-hexagon\` \`theme-mesh\` \`theme-aurora\` \`theme-waves\` \`theme-minimal\` \`theme-grid\` |
 || \`fontFamily\` | خط البوستر: \`Inter\` \`Cairo\` \`Oswald\` \`Bebas Neue\` \`Playfair Display\` \`Orbitron\` |
@@ -1513,7 +1515,7 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
 | \`badgeStyle\` | نمط الشارة: \`rect\` (مستطيل) \`pill\` (حبة) \`bar\` (شريط) |
 | \`titleAlign\` | محاذاة العنوان: \`center\` \`left\` \`right\` |
 | \`titleWeight\` | وزن خط العنوان: \`400\` \`700\` \`900\` \`1000\` |
-| \`titleSpacing\` | تباعد أحرف العنوان بالبكسل (من \`-10\` إلى \`20\`) |
+| \`titleSpacing\` | تباعد أحرف العنوان بالبكسل (من \`0\` إلى \`20\`) |
 | \`titleMain\` / \`titleAccent\` | العنوان الرئيسي على سطرين (بالإنجليزية، قصير وقوي) |
 | \`subtitle\` | سطر فرعي إنجليزي قصير |
 | \`intro\` | مقدمة عربية (RTL) — استخدم \\n للأسطر |
