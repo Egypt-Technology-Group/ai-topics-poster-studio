@@ -42,8 +42,6 @@
   "codeLineNumbers": false,
   "colors": { "--red": "#61dafb", "--red2": "#2a9ec4" },
   "techLogo": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg",
-  "userLogo": "",
-  "userLogoPos": { "pos": "auto-tl", "size": 210, "dx": 0, "dy": 0 },
   "techLogoPos": { "pos": "tr", "size": 230, "dx": 45, "dy": 50 },
   "logoHighlight": { "enabled": true, "color": "#61dafb", "blur": 25, "opacity": 0.35, "x": 0, "y": 0 },
   "bgHighlight": { "enabled": true, "color": "#61dafb", "opacity": 0.38, "x": 85, "y": 0, "size": 30 },
