@@ -2945,3 +2945,189 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ============ LAYOUT TEMPLATES ============ */
+/* .cards-wrap is a plain block by default (classic/hero). Per-layout rules
+   below rearrange logos, title, cards and footer into distinct compositions. */
+.cards-wrap { display: block; }
+
+/* ---- MAGAZINE: sidebar (logos + title) | main (cards) ---- */
+.poster.layout-magazine,
+.poster.layout-magazine .content-fit {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 30px;
+}
+.poster.layout-magazine .layout-sidebar {
+  flex: 0 0 290px;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.poster.layout-magazine .layout-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.poster.layout-magazine .curve { display: none; }
+.poster.layout-magazine .brand {
+  width: 100% !important;
+  transform: none !important;
+}
+.poster.layout-magazine .tech-logo {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+  right: auto !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin-top: 4px;
+}
+.poster.layout-magazine .title {
+  margin-top: 6px;
+  text-align: start;
+}
+.poster.layout-magazine .badge {
+  padding: 11px 26px;
+  font-size: calc(30px * var(--fs-badge, 1));
+}
+.poster.layout-magazine .tips {
+  font-size: calc(56px * var(--fs-tips, 1));
+  line-height: 1.08;
+  margin: 14px 0 8px;
+}
+.poster.layout-magazine .subtitle {
+  font-size: calc(20px * var(--fs-subtitle, 1));
+  letter-spacing: 1px;
+}
+.poster.layout-magazine .intro {
+  margin: 14px 0 0;
+  font-size: calc(19px * var(--fs-intro, 1));
+}
+/* footer pinned to the bottom of the sidebar column */
+.poster.layout-magazine .footer {
+  left: 55px;
+  right: auto;
+  transform: none;
+  max-width: 290px;
+  justify-content: flex-start;
+  padding: 10px 18px;
+  font-size: calc(18px * var(--fs-footer, 1));
+}
+
+/* ---- HERO: giant tech-logo watermark behind an overlaid title ---- */
+.poster.layout-hero .curve { display: none; }
+.poster.layout-hero .tech-logo {
+  right: auto !important;
+  top: 40px !important;
+  left: 50% !important;
+  bottom: auto !important;
+  width: 540px !important;
+  height: auto !important;
+  aspect-ratio: 230 / 190;
+  transform: translateX(-50%);
+  opacity: 0.13;
+  z-index: 0;
+  filter: none !important;
+}
+.poster.layout-hero .brand {
+  position: absolute;
+  z-index: 3;
+}
+.poster.layout-hero .title {
+  position: relative;
+  z-index: 2;
+  margin-top: 64px;
+  text-align: center;
+  padding: 18px 0 6px;
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 8, 17, 0.78) 0%,
+    rgba(5, 8, 17, 0.35) 70%,
+    transparent 100%
+  );
+  border-radius: 16px;
+}
+
+/* ---- GRID: every card half-width in a uniform two-column flow ---- */
+.poster.layout-grid .curve { display: none; }
+.poster.layout-grid .cards-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.poster.layout-grid .card-row {
+  gap: 24px;
+  margin-top: 24px;
+}
+.poster.layout-grid .card,
+.poster.layout-grid .card-row .card {
+  margin-top: 0;
+}
+/* a lone trailing half-card sits on the leading side (RTL aware) */
+.poster.layout-grid .cards-wrap > .card-half {
+  margin-top: 24px;
+}
+
+/* ============ LAYOUT SELECTOR (sidebar) ============ */
+.layouts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.layout-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: var(--ui-card);
+  color: var(--ui-txt);
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .1s;
+  text-align: start;
+}
+.layout-opt:hover { border-color: var(--ui-accent); }
+.layout-opt:active { transform: translateY(1px); }
+.layout-opt.sel {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px rgba(91, 140, 255, .25);
+}
+.layout-opt .ly-prev {
+  height: 46px;
+  border-radius: 7px;
+  background: #0b101a;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(97, 218, 251, .25);
+}
+.layout-opt .ly-prev i {
+  position: absolute;
+  background: rgba(97, 218, 251, .55);
+  border-radius: 2px;
+}
+/* classic preview: centered bar + stacked rows */
+.layout-opt .ly-prev.classic i.t  { left: 50%; top: 6px; width: 30px; height: 6px; transform: translateX(-50%); }
+.layout-opt .ly-prev.classic i.r1 { left: 6px; right: 6px; top: 18px; height: 7px; background: rgba(244,245,247,.18); }
+.layout-opt .ly-prev.classic i.r2 { left: 6px; right: 6px; top: 29px; height: 7px; background: rgba(244,245,247,.18); }
+/* magazine preview: sidebar + main rows */
+.layout-opt .ly-prev.magazine i.s  { left: 5px; top: 5px; width: 12px; height: 36px; }
+.layout-opt .ly-prev.magazine i.r1 { left: 22px; right: 5px; top: 6px; height: 14px; background: rgba(244,245,247,.18); }
+.layout-opt .ly-prev.magazine i.r2 { left: 22px; right: 5px; top: 24px; height: 14px; background: rgba(244,245,247,.18); }
+/* hero preview: big faint logo + title bar + rows */
+.layout-opt .ly-prev.hero i.lg { left: 50%; top: 2px; width: 26px; height: 22px; transform: translateX(-50%); opacity: .35; border-radius: 50%; }
+.layout-opt .ly-prev.hero i.t  { left: 50%; top: 10px; width: 34px; height: 6px; transform: translateX(-50%); }
+.layout-opt .ly-prev.hero i.r1 { left: 6px; right: 6px; top: 28px; height: 6px; background: rgba(244,245,247,.18); }
+.layout-opt .ly-prev.hero i.r2 { left: 6px; right: 6px; top: 36px; height: 6px; background: rgba(244,245,247,.18); }
+/* grid preview: two-column rows */
+.layout-opt .ly-prev.grid i.a1 { left: 5px; top: 6px; width: calc(50% - 7px); height: 14px; background: rgba(244,245,247,.18); }
+.layout-opt .ly-prev.grid i.a2 { right: 5px; top: 6px; width: calc(50% - 7px); height: 14px; background: rgba(244,245,247,.18); }
+.layout-opt .ly-prev.grid i.b1 { left: 5px; top: 24px; width: calc(50% - 7px); height: 14px; background: rgba(244,245,247,.18); }
+.layout-opt .ly-prev.grid i.b2 { right: 5px; top: 24px; width: calc(50% - 7px); height: 14px; background: rgba(244,245,247,.18); }
+.layout-opt .nm { font-size: 12px; font-weight: 700; }
+.layout-opt .ds { font-size: 10.5px; color: var(--ui-muted); line-height: 1.4; }

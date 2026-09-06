@@ -9,6 +9,7 @@ import {
 import {
   applyPreset, randomPalette, setColor, setTheme, setFontFamily, setPageSize,
   setExportScale, setFontScale, resetFontScales, setField, setCard, toggleCardProp,
+  setLayout,
   resetCardStyle, addCard, delCard, moveCard, duplicateCard, addCardFromTemplate,
   toggleCard, clearLogo, setLogoPos, resetLogoPos, setLogoHighlight, setBgHighlight,
   pickFile,
@@ -36,6 +37,7 @@ expose('applyPreset', applyPreset);
 expose('randomPalette', randomPalette);
 expose('setColor', setColor);
 expose('setTheme', setTheme);
+expose('setLayout', setLayout);
 expose('setFontFamily', setFontFamily);
 expose('setPageSize', setPageSize);
 expose('setExportScale', setExportScale);

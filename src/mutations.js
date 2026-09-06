@@ -56,6 +56,7 @@ export function setColor(k,v){
 }
 
 export function setTheme(t){ pushHistory(); state.theme=t; renderAll(); }
+export function setLayout(v){ pushHistory(); state.layout=v; renderAll(); }
 export function setFontFamily(v){ pushHistory(); state.fontFamily=v; renderAll(); }
 export function setPageSize(v){ pushHistory(); state.pageSize=v; renderAll(); }
 export function setExportScale(v){ setExportScaleValue(v); toast('جودة التصدير: '+v+'x'); }

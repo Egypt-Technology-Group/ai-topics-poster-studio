@@ -77,6 +77,16 @@ export const PRESETS = {
   flutter:  { label:"Flutter",  red:"#54c5f8", red2:"#02569b", theme:"theme-flutter",  badge:"FLUTTER",  tech:"flutter"  },
 };
 
+// Whole-poster layout templates — completely different arrangements of
+// logos, title, cards and footer (not just colors/backgrounds).
+// `id` is also used as a CSS class: .poster.layout-<id>
+export const LAYOUTS = [
+  { id:'classic',  nm:'كلاسيكي',        desc:'الشعار أعلى، العنوان بالوسط، البطاقات بالترتيب' },
+  { id:'magazine', nm:'مجلة',           desc:'عمود جانبي للشعار والعنوان، البطاقات في العمود الرئيسي' },
+  { id:'hero',     nm:'هيرو',           desc:'شعار التقنية ضخم بالخلفية، العنوان أمامه، البطاقات أسفل' },
+  { id:'grid',     nm:'شبكة',           desc:'كل البطاقات بعرض نصف في شبكة عمودين متناسقة' },
+];
+
 export const THEMES = [
   {id:"theme-laravel",  nm:"Laravel (افتراضي)"},
   {id:"theme-react",    nm:"React — مدارات"},

@@ -5,6 +5,7 @@ import { TECH_LOGOS, defaultFontScales } from './constants.js';
 export function defaultState(){
   return {
     lang:"react",
+    layout:"classic",
     pageSize:"auto",
     fontScales:defaultFontScales(),
     colors:{ "--bg":"#050811","--red":"#61dafb","--red2":"#2a9ec4","--cyan":"#35d6df","--white":"#f4f5f7","--muted":"#b9bec9","--panel":"#0b101a","--panel2":"#101722" },

@@ -52,6 +52,9 @@ export function posterVars(s){
 // Resolve a card's effective span: 'auto' → 'half' for tip/warning/info/no-code cards, 'full' otherwise
 export function resolveSpan(c){
   if(c.span==='full' || c.span==='half') return c.span;
+  // In the 'grid' layout every card is forced to half-width so they pair up
+  // into a uniform two-column grid (including code cards).
+  if(state.layout === 'grid') return 'half';
   const ctype = c.type || 'code';
   if(ctype === 'tip' || ctype === 'warning' || ctype === 'info' || ctype === 'minimal' || ctype === 'minicode' || ctype === 'text' || ctype === 'heading') return 'half';
   if(c.code===undefined || c.code===null || c.code==='') return 'half';
@@ -201,6 +204,20 @@ export function buildFooterHTML(s, pageNum=0, totalPages=0){
   return `<div class="footer">${icons}${esc(s.footer)}${pageBadge}</div>`;
 }
 
+// Build the inner markup (logos + header + cards) for a poster.
+// Layout-aware: the 'magazine' layout wraps logos+header in a sidebar column
+// and cards in a main column; other layouts keep the flat structure.
+export function buildPosterInner(s, v, headerHTML, cardsHTML){
+  const logos = `
+    <div class="curve"></div>
+    <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
+    <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">`;
+  if((s.layout || 'classic') === 'magazine'){
+    return `<div class="layout-sidebar">${logos}${headerHTML}</div><div class="cards-wrap layout-main">${cardsHTML}</div>`;
+  }
+  return `${logos}${headerHTML}<div class="cards-wrap">${cardsHTML}</div>`;
+}
+
 // Assemble a complete <section class="poster"> element
 export function buildPosterElement(s, opts){
   const v = posterVars(s);
@@ -208,14 +225,10 @@ export function buildPosterElement(s, opts){
   const heightStyle = opts.fixedHeight ? `height:${opts.fixedHeight}px;` : '';
   const fontScaleVar = v.fontScaleVars;
   const fontVar = v.fontVar;
-  const logos = `
-    <div class="curve"></div>
-    <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
-    <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">`;
   const cardScale = opts.cardScale != null ? opts.cardScale : 1;
   const headerHTML = opts.header || '';
   const cardsHTML = opts.cardsHTML || '';
-  const inner = `${logos}${headerHTML}${cardsHTML}`;
+  const inner = buildPosterInner(s, v, headerHTML, cardsHTML);
   // When scaling, .content-fit becomes a "virtual poster" of width 900/sc with
   // padding 58/sc,55/sc,110/sc — after transform:scale(sc) everything maps back to
   // the real 900px frame proportionally (logos keep their padding-box positions).
@@ -223,7 +236,8 @@ export function buildPosterElement(s, opts){
   const contentMarkup = sc < 1
     ? `<div class="content-fit" style="width:${(100/sc).toFixed(4)}%;padding:${(58/sc).toFixed(2)}px ${(55/sc).toFixed(2)}px ${(110/sc).toFixed(2)}px;transform:scale(${sc.toFixed(4)});transform-origin:top left">${inner}</div>`
     : inner;
-  return `<section class="poster ${esc(s.theme)}" dir="ltr" style='--poster-width:${POSTER_WIDTH}px;${minHeightVar}${heightStyle}${fontScaleVar}${fontVar}${v.cssVars};${v.bgVars}'>
+  const layoutCls = `layout-${s.layout || 'classic'}`;
+  return `<section class="poster ${esc(s.theme)} ${layoutCls}" dir="ltr" style='--poster-width:${POSTER_WIDTH}px;${minHeightVar}${heightStyle}${fontScaleVar}${fontVar}${v.cssVars};${v.bgVars}'>
     ${contentMarkup}
     ${opts.footer ? buildFooterHTML(s, opts.pageNum||0, opts.totalPages||0) : ''}
   </section>`;
@@ -251,23 +265,20 @@ export function measureLayout(vs = 1){
 
   // Full-layout measurement: full header + all cards in one long poster
   const poster = document.createElement('section');
-  poster.className = 'poster ' + (s.theme||'');
+  poster.className = 'poster ' + (s.theme||'') + ' layout-' + (s.layout||'classic');
   poster.style.cssText = `--poster-width:${POSTER_WIDTH}px;--poster-min-height:0;${v.fontScaleVars}${v.fontVar}${v.cssVars};${v.bgVars}`;
   const cardsHTML = rows.map(row => {
     if(row.length === 1) return buildCardHTML(s.cards[row[0]], row[0]);
     return `<div class="card-row">${row.map(i=>buildCardHTML(s.cards[i], i)).join('')}</div>`;
   }).join('');
-  poster.innerHTML = wrap(
-    `<div class="curve"></div>
-    <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
-    <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">
-    ${buildHeaderHTML(s)}` + cardsHTML);
+  poster.innerHTML = wrap(buildPosterInner(s, v, buildHeaderHTML(s), cardsHTML));
   stage.appendChild(poster);
   document.body.appendChild(stage);
 
-  // Measure each row (either a .card-row or a standalone .card)
+  // Measure each row (either a .card-row or a standalone .card) inside .cards-wrap
   const container = containerOf(poster);
-  const rowEls = Array.from(container.children).filter(el =>
+  const cardsWrap = container.querySelector('.cards-wrap') || container;
+  const rowEls = Array.from(cardsWrap.children).filter(el =>
     el.classList && (el.classList.contains('card-row') || el.classList.contains('card'))
   );
   const rowMetrics = rows.map((row, idx) => {
@@ -277,13 +288,9 @@ export function measureLayout(vs = 1){
 
   // Continuation page header height (title/subtitle, no intro) measured with a dummy card
   const continuationPoster = document.createElement('section');
-  continuationPoster.className = 'poster ' + (s.theme||'');
+  continuationPoster.className = 'poster ' + (s.theme||'') + ' layout-' + (s.layout||'classic');
   continuationPoster.style.cssText = `--poster-width:${POSTER_WIDTH}px;--poster-min-height:0;${v.fontScaleVars}${v.fontVar}${v.cssVars};${v.bgVars}`;
-  continuationPoster.innerHTML = wrap(
-    `<div class="curve"></div>
-    <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
-    <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">
-    ${buildHeaderHTML(s, false)}<div class="card" style="height:1px"></div>`);
+  continuationPoster.innerHTML = wrap(buildPosterInner(s, v, buildHeaderHTML(s, false), '<div class="card" style="height:1px"></div>'));
   stage.appendChild(continuationPoster);
   const dummyCard = containerOf(continuationPoster).querySelector('.card');
   const continuationHeaderEndY = dummyCard ? dummyCard.offsetTop : ((PAGE_TOP_PAD/vs) + 120);

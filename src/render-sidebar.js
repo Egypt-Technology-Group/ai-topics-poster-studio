@@ -1,7 +1,7 @@
 // ---------- Sidebar render ----------
 import {
   FONT_KEYS, FONTS, COLOR_VARS, THEMES, PRESETS, PAGE_SIZES, EXPORT_SCALES,
-  exportScale, defaultFontScales,
+  LAYOUTS, exportScale, defaultFontScales,
 } from './constants.js';
 import { state } from './state.js';
 import { esc } from './utils.js';
@@ -71,6 +71,7 @@ export function onSidebarSearch(val){
 // Ordered list of sidebar sections for quick-nav + active tracking
 export const SIDEBAR_SECTIONS = [
   {id:'layout', label:'الأبعاد'},
+  {id:'lyt',    label:'التخطيط'},
   {id:'lang',   label:'القالب'},
   {id:'color',  label:'الألوان'},
   {id:'theme',  label:'الثيم'},
@@ -227,6 +228,7 @@ export function renderSidebar(){
     bghl:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>',
     code:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
     font:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>',
+    lyt:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/></svg>',
   };
 
   // Language / preset
@@ -533,8 +535,20 @@ export function renderSidebar(){
     return `<button type="button" class="sb-nav-chip" data-sec="${s.id}" onclick="jumpToSection('${s.id}')" aria-current="false"><span>${s.label}</span>${cardCount}</button>`;
   }).join('');
   const toolbarHTML = `<div class="sb-actions"><div class="sb-actions-row"><span class="sb-actions-label">أدوات سريعة</span><div class="sb-actions-btns"><button type="button" class="sb-mini" onclick="expandAllSections()" title="فتح كل الأقسام"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/><polyline points="6 4 12 10 18 4" opacity=".5"/></svg><span>فتح الكل</span></button><button type="button" class="sb-mini" onclick="collapseAllSections()" title="طي كل الأقسام"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/><polyline points="18 20 12 14 6 20" opacity=".5"/></svg><span>طي الكل</span></button></div></div><div class="sb-nav" id="sbNav" role="navigation" aria-label="انتقال سريع بين الأقسال">${navChips}</div></div>`;
+  // Layout templates — whole-poster arrangements (not just colors)
+  const currentLayout = s.layout || 'classic';
+  const layoutSectionHTML = '<div class="layouts">' + LAYOUTS.map(l => {
+    const sel = currentLayout === l.id ? ' sel' : '';
+    return `<button type="button" class="layout-opt${sel}" onclick="setLayout('${l.id}')" aria-pressed="${currentLayout===l.id?'true':'false'}" aria-label="${esc(l.nm)}">
+      <span class="ly-prev ${l.id}" aria-hidden="true">${l.id==='classic'?'<i class="t"></i><i class="r1"></i><i class="r2"></i>':l.id==='magazine'?'<i class="s"></i><i class="r1"></i><i class="r2"></i>':l.id==='hero'?'<i class="lg"></i><i class="t"></i><i class="r1"></i><i class="r2"></i>':'<i class="a1"></i><i class="a2"></i><i class="b1"></i><i class="b2"></i>'}</span>
+      <span class="nm">${esc(l.nm)}</span>
+      <span class="ds">${esc(l.desc)}</span>
+    </button>`;
+  }).join('') + '</div>';
+
   sb.innerHTML = searchHTML + toolbarHTML +
     sidebarSection('layout','الأبعاد',icons.theme,layoutHTML) +
+    sidebarSection('lyt','التخطيط',icons.lyt,layoutSectionHTML) +
     sidebarSection('lang','اللغة / القالب',icons.lang,presetHTML) +
     sidebarSection('color','الألوان',icons.color,colorHTML) +
     sidebarSection('theme','ثيم الخلفية',icons.theme,themeHTML) +
