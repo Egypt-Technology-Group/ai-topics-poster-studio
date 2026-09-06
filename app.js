@@ -53,7 +53,6 @@ const PAGE_SIZES = {
 // Layout constants for pagination (must match CSS)
 const PAGE_TOP_PAD = 58;
 const PAGE_BOTTOM_PAD = 110;
-const MINI_HEADER_HEIGHT = 80; // mini badge + page indicator + margins
 const CARD_GAP = 35;           // .card margin-top
 
 // Tech logo URLs (devicon CDN)
@@ -140,7 +139,7 @@ function defaultState(){
     titleAlign:"center",
     badgeStyle:"rect",
     titleWeight:1000,
-    titleSpacing:-5,
+    titleSpacing:0,
     codeTheme:"dark",
     codeLineNumbers:false,
     footerIcons:true,
@@ -429,7 +428,7 @@ function groupCardsIntoRows(cards){
   return rows;
 }
 
-function buildHeaderHTML(s){
+function buildHeaderHTML(s, includeIntro = true){
   const align = s.titleAlign || 'center';
   const badgeStyle = s.badgeStyle || 'rect';
   const weight = s.titleWeight != null ? s.titleWeight : 1000;
@@ -442,20 +441,15 @@ function buildHeaderHTML(s){
       <div class="tips" style="${tipsStyle}">${esc(s.titleMain)} <span>${esc(s.titleAccent)}</span></div>
       <div class="subtitle">${esc(s.subtitle)}</div>
     </div>
-    <div class="intro ar">${esc(s.intro).replace(/\n/g,'<br>')}</div>`;
+    ${includeIntro ? `<div class="intro ar">${esc(s.intro).replace(/\n/g,'<br>')}</div>` : ''}`;
 }
 
-function buildMiniHeaderHTML(s, pageNum, totalPages){
-  return `
-    <div class="mini-header">
-      <div class="badge mini badge-${s.badgeStyle||'rect'}">${esc(s.badge)}</div>
-      <div class="page-indicator">${pageNum} / ${totalPages}</div>
-    </div>`;
-}
 
-function buildFooterHTML(s){
+
+function buildFooterHTML(s, pageNum=0, totalPages=0){
   const icons = s.footerIcons !== false ? FOOTER_SVG : '';
-  return `<div class="footer">${icons}${esc(s.footer)}</div>`;
+  const pageBadge = totalPages > 1 ? `<span class="page-indicator" style="margin-inline-start:10px">${pageNum} / ${totalPages}</span>` : '';
+  return `<div class="footer">${icons}${esc(s.footer)}${pageBadge}</div>`;
 }
 
 // Assemble a complete <section class="poster"> element
@@ -473,11 +467,11 @@ function buildPosterElement(s, opts){
     ${logos}
     ${opts.header || ''}
     ${opts.cardsHTML || ''}
-    ${opts.footer ? buildFooterHTML(s) : ''}
+    ${opts.footer ? buildFooterHTML(s, opts.pageNum||0, opts.totalPages||0) : ''}
   </section>`;
 }
 
-// Measure row heights by rendering a hidden poster
+// Measure row heights and header end positions by rendering hidden posters
 function measureLayout(){
   const s = state;
   const v = posterVars(s);
@@ -485,6 +479,8 @@ function measureLayout(){
   const stage = document.createElement('div');
   stage.className = 'poster-export-stage';
   stage.style.cssText += 'visibility:hidden;';
+
+  // Full-layout measurement: full header + all cards in one long poster
   const poster = document.createElement('section');
   poster.className = 'poster ' + (s.theme||'');
   poster.style.cssText = `--poster-width:${POSTER_WIDTH}px;--poster-min-height:0;${v.fontScaleVars}${v.fontVar}${v.cssVars};${v.bgVars}`;
@@ -508,12 +504,27 @@ function measureLayout(){
     const el = rowEls[idx];
     return { row, top: el ? el.offsetTop : 0, height: el ? el.offsetHeight : 0 };
   });
+
+  // Continuation page header height (title/subtitle, no intro) measured with a dummy card
+  const continuationPoster = document.createElement('section');
+  continuationPoster.className = 'poster ' + (s.theme||'');
+  continuationPoster.style.cssText = `--poster-width:${POSTER_WIDTH}px;--poster-min-height:0;${v.fontScaleVars}${v.fontVar}${v.cssVars};${v.bgVars}`;
+  continuationPoster.innerHTML =
+    `<div class="curve"></div>
+    <div class="${v.userWrapClass}" style="${v.userWrapStyle}"><img class="user-logo" src="${esc(s.userLogo)}" alt="user logo"></div>
+    <img class="tech-logo" src="${esc(s.techLogo)}" alt="tech logo" crossorigin="anonymous" referrerpolicy="no-referrer" style="${v.techStyle}">
+    ${buildHeaderHTML(s, false)}<div class="card" style="height:1px"></div>`;
+  stage.appendChild(continuationPoster);
+  const dummyCard = continuationPoster.querySelector('.card');
+  const continuationHeaderEndY = dummyCard ? dummyCard.offsetTop : (PAGE_TOP_PAD + 120);
+
   stage.remove();
-  return { rowMetrics };
+  const headerEndY = rowMetrics[0] ? rowMetrics[0].top : 0;
+  return { rowMetrics, headerEndY, continuationHeaderEndY };
 }
 
 // Greedy pagination: distribute rows across fixed-height pages
-function paginateRows(rowMetrics, pageHeight){
+function paginateRows(rowMetrics, pageHeight, headerEndY, continuationHeaderEndY){
   const limit = pageHeight - PAGE_BOTTOM_PAD;
   const pages = [];
   let page = { type:'full', rows:[] };
@@ -521,26 +532,21 @@ function paginateRows(rowMetrics, pageHeight){
 
   for(let i=0; i<rowMetrics.length; i++){
     const isFirstOnPage = page.rows.length === 0;
-    let gap, rowH = rowMetrics[i].height;
+    const rowH = rowMetrics[i].height;
 
-    if(page.type === 'full' && isFirstOnPage){
-      y = rowMetrics[0] ? rowMetrics[0].top : 0;
-      gap = 0;
-    } else if(page.type === 'mini' && isFirstOnPage){
-      y = PAGE_TOP_PAD + MINI_HEADER_HEIGHT;
-      gap = CARD_GAP;
-    } else {
-      gap = CARD_GAP;
+    if(isFirstOnPage){
+      y = page.type === 'full' ? headerEndY : continuationHeaderEndY;
     }
 
+    const gap = isFirstOnPage ? 0 : CARD_GAP;
     const rowBottom = y + gap + rowH;
+
     if(rowBottom > limit && !isFirstOnPage){
       pages.push(page);
       page = { type:'mini', rows:[] };
-      y = PAGE_TOP_PAD + MINI_HEADER_HEIGHT;
-      gap = CARD_GAP;
+      y = continuationHeaderEndY;
       page.rows.push(rowMetrics[i].row);
-      y = y + gap + rowH;
+      y = y + rowH;
     } else {
       page.rows.push(rowMetrics[i].row);
       y = rowBottom;
@@ -565,34 +571,36 @@ function renderPoster(){
     stage.innerHTML = buildPosterElement(s, {
       header: buildHeaderHTML(s),
       cardsHTML,
-      footer: true
+      footer: true,
+      pageNum: 1,
+      totalPages: 1
     });
     updateDimInfo(ps, 1);
     return;
   }
 
   // Fixed size: measure, paginate, render multiple pages
-  const { headerEndY, rowMetrics } = measureLayout();
+  const { rowMetrics, headerEndY, continuationHeaderEndY } = measureLayout();
   if(!rowMetrics.length){
     stage.innerHTML = buildPosterElement(s, {
       header: buildHeaderHTML(s),
       cardsHTML: '',
       footer: true,
-      fixedHeight: ps.h
+      fixedHeight: ps.h,
+      pageNum: 1,
+      totalPages: 1
     });
     updateDimInfo(ps, 1);
     return;
   }
 
-  const pages = paginateRows(rowMetrics, ps.h);
+  const pages = paginateRows(rowMetrics, ps.h, headerEndY, continuationHeaderEndY);
   const totalPages = pages.length;
   let html = '';
   pages.forEach((pg, idx) => {
     const pageNum = idx + 1;
     const isLast = idx === totalPages - 1;
-    const header = pg.type === 'full'
-      ? buildHeaderHTML(s)
-      : buildMiniHeaderHTML(s, pageNum, totalPages);
+    const header = buildHeaderHTML(s, pg.type === 'full');
     const cardsHTML = pg.rows.map(row => {
       if(row.length === 1) return buildCardHTML(s.cards[row[0]], row[0]);
       return `<div class="card-row">${row.map(i=>buildCardHTML(s.cards[i], i)).join('')}</div>`;
@@ -601,7 +609,9 @@ function renderPoster(){
       header,
       cardsHTML,
       footer: true,
-      fixedHeight: ps.h
+      fixedHeight: ps.h,
+      pageNum,
+      totalPages
     });
     if(!isLast) html += '<div class="page-sep" aria-hidden="true"></div>';
   });
@@ -903,8 +913,8 @@ function renderSidebar(){
     <div class="fld"><label>وزن خط العنوان — <b>${s.titleWeight!=null?s.titleWeight:1000}</b></label>
       <input type="range" min="400" max="1000" step="100" value="${s.titleWeight!=null?s.titleWeight:1000}" oninput="setField('titleWeight',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value">
     </div>
-    <div class="fld"><label>تباعد أحرف العنوان — <b>${s.titleSpacing!=null?s.titleSpacing:-5}px</b></label>
-      <input type="range" min="-10" max="20" value="${s.titleSpacing!=null?s.titleSpacing:-5}" oninput="setField('titleSpacing',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
+    <div class="fld"><label>تباعد أحرف العنوان — <b>${s.titleSpacing!=null?s.titleSpacing:0}px</b></label>
+      <input type="range" min="-10" max="20" value="${s.titleSpacing!=null?s.titleSpacing:0}" oninput="setField('titleSpacing',+this.value);this.previousElementSibling.querySelector('b').textContent=this.value+'px'">
     </div>
     <div class="fld"><label>العنوان الفرعي</label><input type="text" value="${esc(s.subtitle)}" oninput="setField('subtitle',this.value)"></div>
     <div class="fld"><label>المقدمة (عربي RTL)</label><textarea oninput="setField('intro',this.value)">${esc(s.intro)}</textarea></div>`;
@@ -1414,7 +1424,7 @@ function applyLoadedState(loaded){
   if(!state.titleAlign) state.titleAlign='center';
   if(!state.badgeStyle) state.badgeStyle='rect';
   if(state.titleWeight==null) state.titleWeight=1000;
-  if(state.titleSpacing==null) state.titleSpacing=-5;
+  if(state.titleSpacing==null) state.titleSpacing=0;
   // backfill code/footer customization for old projects
   if(!state.codeTheme) state.codeTheme='dark';
   if(state.codeLineNumbers==null) state.codeLineNumbers=false;
@@ -1453,7 +1463,7 @@ const AGENT_SPEC = `# تعليمات تصميم بوستر لأداة AI Topics 
   "badgeStyle": "rect",
   "titleAlign": "center",
   "titleWeight": 1000,
-  "titleSpacing": -5,
+  "titleSpacing": 0,
   "titleMain": "HOOKS",
   "titleAccent": "DEEP DIVE",
   "subtitle": "STATE & EFFECTS",

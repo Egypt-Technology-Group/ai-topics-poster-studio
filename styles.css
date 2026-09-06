@@ -1442,10 +1442,10 @@ select {
 }
 .tips {
   font-size: calc(115px * var(--fs-tips, 1));
-  line-height: 0.9;
+  line-height: 1;
   font-weight: 1000;
   margin: 20px 0 14px;
-  letter-spacing: -5px;
+  word-spacing: 0.05em;
 }
 .tips span {
   color: var(--red, #61dafb);
