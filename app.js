@@ -468,11 +468,15 @@ function buildPosterElement(s, opts){
   const cardScale = opts.cardScale != null ? opts.cardScale : 1;
   const headerHTML = opts.header || '';
   const cardsHTML = opts.cardsHTML || '';
-  const contentMarkup = cardScale < 1
-    ? `<div class="content-fit" style="transform:scale(${cardScale.toFixed(4)});transform-origin:top left;width:${(100/cardScale).toFixed(4)}%">${headerHTML}${cardsHTML}</div>`
-    : `${headerHTML}${cardsHTML}`;
+  const inner = `${logos}${headerHTML}${cardsHTML}`;
+  // When scaling, .content-fit becomes a "virtual poster" of width 900/sc with
+  // padding 58/sc,55/sc,110/sc — after transform:scale(sc) everything maps back to
+  // the real 900px frame proportionally (logos keep their padding-box positions).
+  const sc = cardScale;
+  const contentMarkup = sc < 1
+    ? `<div class="content-fit" style="width:${(100/sc).toFixed(4)}%;padding:${(58/sc).toFixed(2)}px ${(55/sc).toFixed(2)}px ${(110/sc).toFixed(2)}px;transform:scale(${sc.toFixed(4)});transform-origin:top left">${inner}</div>`
+    : inner;
   return `<section class="poster ${esc(s.theme)}" dir="ltr" style='--poster-width:${POSTER_WIDTH}px;${minHeightVar}${heightStyle}${fontScaleVar}${fontVar}${v.cssVars};${v.bgVars}'>
-    ${logos}
     ${contentMarkup}
     ${opts.footer ? buildFooterHTML(s, opts.pageNum||0, opts.totalPages||0) : ''}
   </section>`;

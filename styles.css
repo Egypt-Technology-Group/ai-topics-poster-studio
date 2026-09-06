@@ -1466,11 +1466,15 @@ select {
   padding-inline-start: 24px;
   text-align: start;
 }
-/* Scale-to-fit wrapper for paginated pages (scales header + cards together) */
+/* Scale-to-fit wrapper for paginated pages (scales logos + header + cards together).
+   Acts as a "virtual poster" wider than 900px; the transform shrinks it uniformly.
+   No overflow:hidden — content must paint beyond the box before the transform applies. */
 .content-fit {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
   z-index: 2;
-  overflow: hidden;            /* prevent margin-collapse so margin-top is included in scale */
+  box-sizing: border-box;
 }
 .card {
   position: relative;
